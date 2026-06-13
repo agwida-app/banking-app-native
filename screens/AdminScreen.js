@@ -13,15 +13,17 @@ import { sendPasswordResetEmail } from 'firebase/auth';
 import { auth, db } from '../firebase';
 
 const PLANS = [
- { id:'1m', label:'شهر', months:1, price:10 },
- { id:'3m', label:'3 أشهر', months:3, price:30 },
- { id:'6m', label:'6 أشهر', months:6, price:60 },
- { id:'12m', label:'12 شهر', months:12, price:100 },
+ { id:'7d',  label:'7 أيام',   months:0, days:7,  price:5  },
+ { id:'1m',  label:'شهر',      months:1, days:0,  price:10 },
+ { id:'3m',  label:'3 أشهر',   months:3, days:0,  price:30 },
+ { id:'6m',  label:'6 أشهر',   months:6, days:0,  price:60 },
+ { id:'12m', label:'12 شهر',   months:12, days:0, price:100 },
 ];
 
-function addMonths(months) {
+function addTime(months, days) {
  const d = new Date();
- d.setMonth(d.getMonth() + months);
+ if (days) { d.setDate(d.getDate() + days); }
+ else { d.setMonth(d.getMonth() + months); }
  return d;
 }
 
@@ -47,7 +49,7 @@ export default function AdminScreen({ navigation }) {
  const [loading, setLoading] = useState(true);
  const [modal, setModal] = useState(false);
  const [saving, setSaving] = useState(false);
- const [form, setForm] = useState({ code: genCode(), plan: '3m', maxClients: '500', notes: '' });
+ const [form, setForm] = useState({ code: genCode(), plan: '1m', maxClients: '500', notes: '' });
 
  useEffect(() => {
    const q = query(collection(db, 'subscriptions'), orderBy('createdAt', 'desc'));
@@ -62,7 +64,7 @@ export default function AdminScreen({ navigation }) {
    setSaving(true);
    try {
      const plan = PLANS.find(p => p.id === form.plan);
-     const expDate = addMonths(plan.months);
+     const expDate = addTime(plan.months, plan.days);
      const codeKey = form.code.trim().toUpperCase();
      await setDoc(doc(db, 'subscriptions', codeKey), {
        code: codeKey, plan: form.plan, planLabel: plan.label,
@@ -73,7 +75,7 @@ export default function AdminScreen({ navigation }) {
      });
      Alert.alert('✅ تم', `تم إنشاء الكود: ${codeKey}`);
      setModal(false);
-     setForm({ code: genCode(), plan: '3m', maxClients: '500', notes: '' });
+     setForm({ code: genCode(), plan: '1m', maxClients: '500', notes: '' });
    } catch (e) { Alert.alert('خطأ', e.message); }
    setSaving(false);
  };
@@ -87,12 +89,13 @@ export default function AdminScreen({ navigation }) {
    ]);
  };
 
- const renewSub = async (sub) => {
+ const renewSub = (sub) => {
    Alert.alert('تجديد', 'اختر الباقة:', PLANS.map(p => ({
      text: `${p.label} - $${p.price}`,
      onPress: async () => {
        await updateDoc(doc(db, 'subscriptions', sub.id), {
-         expiresAt: addMonths(p.months), plan: p.id, planLabel: p.label
+         expiresAt: addTime(p.months, p.days),
+         plan: p.id, planLabel: p.label
        });
        Alert.alert('✅ تم التجديد');
      }
@@ -100,15 +103,13 @@ export default function AdminScreen({ navigation }) {
  };
 
  const copyWelcome = (sub) => {
-   const msg = `مرحباً 👋\n\nتم تفعيل اشتراكك في تطبيق إدارة بطاقاتك\n\n🔑 كود التفعيل:\n${sub.code || sub.id}`;
-   Alert.alert('رسالة الترحيب', msg);
+   Alert.alert('رسالة الترحيب',
+     `مرحباً 👋\n\nتم تفعيل اشتراكك في تطبيق إدارة بطاقاتك\n\n🔑 كود التفعيل:\n${sub.code || sub.id}`
+   );
  };
 
  const resetPassword = (email) => {
-   if (!email) {
-     Alert.alert('خطأ', 'هذا المشترك لم يسجل بريده بعد');
-     return;
-   }
+   if (!email) { Alert.alert('خطأ', 'هذا المشترك لم يسجل بريده بعد'); return; }
    Alert.alert(
      'إعادة تعيين كلمة المرور',
      `هل تريد إرسال رابط إعادة التعيين إلى:\n${email}؟`,
@@ -118,15 +119,13 @@ export default function AdminScreen({ navigation }) {
          try {
            await sendPasswordResetEmail(auth, email);
            Alert.alert('✅ تم الإرسال', `تم إرسال الرابط إلى ${email}`);
-         } catch (e) {
-           Alert.alert('خطأ', e.message);
-         }
+         } catch (e) { Alert.alert('خطأ', e.message); }
        }}
      ]
    );
  };
 
- const resetDevices = async (sub) => {
+ const resetDevices = (sub) => {
    Alert.alert('إعادة ضبط الأجهزة', 'هل تريد مسح جميع الأجهزة المسجلة؟', [
      { text: 'إلغاء', style: 'cancel' },
      { text: 'إعادة ضبط', onPress: async () => {
@@ -176,8 +175,7 @@ export default function AdminScreen({ navigation }) {
                <View style={s.card}>
                  <View style={s.cardTop}>
                    <Text style={s.code}>{sub.code || sub.id}</Text>
-                   <View style={[s.chip,
-                     isActive ? s.chipOk : isFree ? s.chipFree : s.chipExp]}>
+                   <View style={[s.chip, isActive ? s.chipOk : isFree ? s.chipFree : s.chipExp]}>
                      <Text style={s.chipT}>
                        {isActive ? '✅ مفعّل' : isFree ? '🔓 متاح' : '❌ منتهي'}
                      </Text>
@@ -204,7 +202,7 @@ export default function AdminScreen({ navigation }) {
                      <Text style={s.actionT}>📱 إعادة ضبط الأجهزة</Text>
                    </TouchableOpacity>
                    <TouchableOpacity style={[s.actionBtn, s.delBtnStyle]} onPress={() => deleteSub(sub.id)}>
-                     <Text style={[s.actionT, { color: '#e74c3c' }]}>🗑 حذف</Text>
+                     <Text style={[s.actionT, {color:'#e74c3c'}]}>🗑 حذف</Text>
                    </TouchableOpacity>
                  </View>
                </View>
@@ -213,7 +211,6 @@ export default function AdminScreen({ navigation }) {
          />
      }
 
-     {/* Modal إنشاء كود */}
      <Modal visible={modal} animationType="slide">
        <View style={s.modalWrap}>
          <View style={s.modalHead}>
@@ -223,41 +220,41 @@ export default function AdminScreen({ navigation }) {
            <Text style={s.modalTitle}>➕ كود اشتراك جديد</Text>
            <View style={{width:30}} />
          </View>
-         <ScrollView style={{ padding: 16 }}>
+         <ScrollView style={{padding:16}}>
            <Text style={s.label}>كود التفعيل</Text>
-           <View style={{ flexDirection: 'row', gap: 8, marginBottom: 14 }}>
-             <TextInput style={[s.input, { flex: 1, letterSpacing: 3, textAlign: 'center' }]}
+           <View style={{flexDirection:'row', gap:8, marginBottom:14}}>
+             <TextInput style={[s.input, {flex:1, letterSpacing:3, textAlign:'center'}]}
                value={form.code}
-               onChangeText={v => setForm(f => ({ ...f, code: v.toUpperCase() }))}
+               onChangeText={v => setForm(f => ({...f, code:v.toUpperCase()}))}
                autoCapitalize="characters" autoCorrect={false} />
              <TouchableOpacity style={s.genBtn}
-               onPress={() => setForm(f => ({ ...f, code: genCode() }))}>
+               onPress={() => setForm(f => ({...f, code:genCode()}))}>
                <Text style={s.genT}>🎲</Text>
              </TouchableOpacity>
            </View>
 
            <Text style={s.label}>الباقة</Text>
-           <View style={{ flexDirection: 'row', gap: 8, marginBottom: 14 }}>
+           <View style={{flexDirection:'row', flexWrap:'wrap', gap:8, marginBottom:14}}>
              {PLANS.map(p => (
                <TouchableOpacity key={p.id}
                  style={[s.planBtn, form.plan === p.id && s.planBtnOn]}
-                 onPress={() => setForm(f => ({ ...f, plan: p.id }))}>
+                 onPress={() => setForm(f => ({...f, plan:p.id}))}>
                  <Text style={[s.planT, form.plan === p.id && s.planTOn]}>{p.label}</Text>
-                 <Text style={[s.planPrice, form.plan === p.id && { color: '#c9a84c' }]}>${p.price}</Text>
+                 <Text style={[s.planPrice, form.plan === p.id && {color:'#c9a84c'}]}>${p.price}</Text>
                </TouchableOpacity>
              ))}
            </View>
 
            <Text style={s.label}>الحد الأقصى للعملاء</Text>
-           <TextInput style={[s.input, { marginBottom: 14 }]}
+           <TextInput style={[s.input, {marginBottom:14}]}
              value={form.maxClients}
-             onChangeText={v => setForm(f => ({ ...f, maxClients: v }))}
+             onChangeText={v => setForm(f => ({...f, maxClients:v}))}
              keyboardType="numeric" />
 
            <Text style={s.label}>ملاحظة</Text>
-           <TextInput style={[s.input, { marginBottom: 20 }]}
+           <TextInput style={[s.input, {marginBottom:20}]}
              value={form.notes}
-             onChangeText={v => setForm(f => ({ ...f, notes: v }))}
+             onChangeText={v => setForm(f => ({...f, notes:v}))}
              placeholder="اسم العميل مثلاً"
              placeholderTextColor="#8a9ab5" />
          </ScrollView>
@@ -309,7 +306,7 @@ const s = StyleSheet.create({
  input:      { backgroundColor:'rgba(255,255,255,0.06)', borderWidth:1.5, borderColor:'rgba(255,255,255,0.1)', borderRadius:10, padding:12, color:'#f8f6f0', fontSize:15, textAlign:'right' },
  genBtn:     { backgroundColor:'rgba(255,255,255,0.06)', borderRadius:10, padding:12, borderWidth:1, borderColor:'rgba(255,255,255,0.1)' },
  genT:       { fontSize:18 },
- planBtn:    { flex:1, padding:10, borderRadius:10, borderWidth:1.5, borderColor:'rgba(255,255,255,0.12)', backgroundColor:'rgba(255,255,255,0.05)', alignItems:'center' },
+ planBtn:    { paddingHorizontal:14, paddingVertical:10, borderRadius:10, borderWidth:1.5, borderColor:'rgba(255,255,255,0.12)', backgroundColor:'rgba(255,255,255,0.05)', alignItems:'center' },
  planBtnOn:  { borderColor:'#c9a84c', backgroundColor:'rgba(201,168,76,0.12)' },
  planT:      { color:'#8a9ab5', fontSize:12, fontWeight:'700' },
  planTOn:    { color:'#c9a84c' },
