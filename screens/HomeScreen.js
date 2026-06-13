@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity,
   StyleSheet, TextInput, ActivityIndicator,
-  Modal, ScrollView, Alert, Linking
+  Modal, ScrollView, Alert, Linking, Clipboard
 } from 'react-native';
 import { signOut } from 'firebase/auth';
 import {
@@ -27,7 +27,13 @@ function fmt(ts) {
   catch { return '—'; }
 }
 
-export default function HomeScreen() {
+const copy = (v, l) => {
+  if (!v || v === '—') return;
+  Clipboard.setString(v);
+  Alert.alert('✅ تم النسخ', `تم نسخ ${l}`);
+};
+
+export default function HomeScreen({ subDays }) {
   const [clients, setClients] = useState([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
@@ -65,7 +71,9 @@ export default function HomeScreen() {
       c.phone1?.includes(q) ||
       c.phone2?.includes(q) ||
       c.nationalId?.includes(q) ||
-      c.iban?.toLowerCase().includes(q);
+      c.passportId?.toLowerCase().includes(q) ||
+      c.iban?.toLowerCase().includes(q) ||
+      c.accountNumber?.toLowerCase().includes(q);
     const bank = c.bankType === 'أخرى' ? c.bankTypeOther || 'أخرى' : c.bankType;
     const fb = filterBank === 'all' || bank === filterBank || c.bankType === filterBank;
     const fs = filterStatus === 'all'
@@ -147,6 +155,13 @@ export default function HomeScreen() {
         }
       </View>
 
+      {/* تحذير انتهاء الاشتراك */}
+      {subDays && subDays <= 7 && subDays > 0 && subDays < 9999 && (
+        <View style={s.subWarn}>
+          <Text style={s.subWarnT}>⚠️ اشتراكك ينتهي خلال {subDays} أيام — تواصل مع المسؤول للتجديد</Text>
+        </View>
+      )}
+
       {/* Tabs */}
       <View style={s.tabs}>
         <TouchableOpacity style={[s.tab, tab==='clients' && s.tabOn]} onPress={() => setTab('clients')}>
@@ -176,8 +191,6 @@ export default function HomeScreen() {
               </View>
             ))}
           </View>
-
-          {/* واتساب */}
           <TouchableOpacity style={s.waBtn}
             onPress={() => Linking.openURL('https://wa.me/218945888844')}>
             <Text style={s.waBtnT}>📱 تواصل مع خدمة العملاء</Text>
@@ -188,10 +201,9 @@ export default function HomeScreen() {
       {/* Clients Tab */}
       {tab === 'clients' && (
         <>
-          {/* Search + Filter */}
           <View style={s.searchRow}>
             <TextInput style={[s.search, {flex:1}]}
-              placeholder="🔍 بحث بالاسم أو الجوال..."
+              placeholder="🔍 بحث بالاسم، الجوال، الرقم الوطني، IBAN..."
               placeholderTextColor="#8a9ab5"
               value={search} onChangeText={setSearch} />
             <TouchableOpacity style={s.filterBtn} onPress={() => setShowFilters(!showFilters)}>
@@ -201,7 +213,6 @@ export default function HomeScreen() {
 
           {showFilters && (
             <View style={s.filtersBox}>
-              {/* فرز */}
               <Text style={s.filterLabel}>الفرز:</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                 {[
@@ -218,7 +229,6 @@ export default function HomeScreen() {
                 ))}
               </ScrollView>
 
-              {/* فلتر الحالة */}
               <Text style={[s.filterLabel, {marginTop:8}]}>الحالة:</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                 {[
@@ -235,7 +245,6 @@ export default function HomeScreen() {
                 ))}
               </ScrollView>
 
-              {/* فلتر المصرف */}
               {bankNames.length > 0 && (
                 <>
                   <Text style={[s.filterLabel, {marginTop:8}]}>المصرف:</Text>
@@ -299,7 +308,6 @@ export default function HomeScreen() {
               />
           }
 
-          {/* FAB */}
           <TouchableOpacity style={s.fab} onPress={openAdd}>
             <Text style={s.fabT}>＋</Text>
           </TouchableOpacity>
@@ -320,27 +328,230 @@ export default function HomeScreen() {
           </View>
           <ScrollView style={{padding:16}}>
             {sel && [
-              ['الاسم', sel.name],
-              ['المصرف', sel.bankType === 'أخرى' ? sel.bankTypeOther : sel.bankType],
-              ['الهاتف 1', sel.phone1],
-              ['الهاتف 2', sel.phone2 || '—'],
-              ['الرقم الوطني', sel.nationalId],
-              ['جواز السفر', sel.passportId || '—'],
-              ['رقم الحساب', sel.accountNumber || '—'],
-              ['IBAN', sel.iban || '—'],
-              ['المبلغ', sel.amount ? `${parseFloat(sel.amount).toLocaleString()} ${sel.currency}` : '—'],
-              ['تم الشراء من طرف', sel.purchasedBy || '—'],
-              ['نوع الحجز', sel.paymentType || '—'],
-              ['حالة البطاقة', sel.cardBooked ? '✅ تم الحجز' : '⏳ لم يتم'],
-              ['تاريخ الحجز', sel.bookingDate || '—'],
-              ['الرقم السري', sel.pinCode || '—'],
-              ['حالة البيع', sel.isSold ? '🔴 تم البيع' : '🟢 لم يُباع'],
-              ['بيعت إلى', sel.soldTo || '—'],
-              ['ملاحظات', sel.notes || '—'],
-              ['تاريخ الإضافة', fmt(sel.createdAt)],
-              ['أضيف بواسطة', sel.createdBy || '—'],
-            ].map(([l, v]) => (
+              ['الاسم', sel.name, false],
+              ['المصرف', sel.bankType === 'أخرى' ? sel.bankTypeOther : sel.bankType, false],
+              ['الهاتف 1', sel.phone1, true],
+              ['الهاتف 2', sel.phone2 || '—', true],
+              ['الرقم الوطني', sel.nationalId, true],
+              ['جواز السفر', sel.passportId || '—', true],
+              ['رقم الحساب', sel.accountNumber || '—', true],
+              ['IBAN', sel.iban || '—', true],
+              ['المبلغ', sel.amount ? `${parseFloat(sel.amount).toLocaleString()} ${sel.currency}` : '—', false],
+              ['تم الشراء من طرف', sel.purchasedBy || '—', false],
+              ['نوع الحجز', sel.paymentType || '—', false],
+              ['حالة البطاقة', sel.cardBooked ? '✅ تم الحجز' : '⏳ لم يتم', false],
+              ['تاريخ الحجز', sel.bookingDate || '—', false],
+              ['الرقم السري', sel.pinCode || '—', true],
+              ['حالة البيع', sel.isSold ? '🔴 تم البيع' : '🟢 لم يُباع', false],
+              ['بيعت إلى', sel.soldTo || '—', false],
+              ['ملاحظات', sel.notes || '—', false],
+              ['تاريخ الإضافة', fmt(sel.createdAt), false],
+              ['أضيف بواسطة', sel.createdBy || '—', false],
+            ].map(([l, v, canCopy]) => (
               <View key={l} style={s.row}>
-                <Text style={s.rowV}>{v}</Text>
+                <View style={{flex:1, flexDirection:'row', alignItems:'center', gap:6}}>
+                  <Text style={s.rowV}>{v}</Text>
+                  {canCopy && v !== '—' && (
+                    <TouchableOpacity onPress={() => copy(v, l)}>
+                      <Text style={{fontSize:14}}>📋</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
                 <Text style={s.rowL}>{l}</Text>
-              
+              </View>
+            ))}
+            <View style={{height:20}} />
+          </ScrollView>
+          <View style={s.modalFoot}>
+            <TouchableOpacity style={s.cancelBtn} onPress={() => setModal(null)}>
+              <Text style={s.cancelT}>إغلاق</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[s.saveBtn, {backgroundColor:'#e74c3c'}]} onPress={() => handleDelete(sel)}>
+              <Text style={s.saveT}>🗑 حذف</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Form Modal */}
+      <Modal visible={modal === 'form'} animationType="slide">
+        <View style={s.modalWrap}>
+          <View style={s.modalHead}>
+            <TouchableOpacity onPress={() => setModal(null)}>
+              <Text style={s.modalClose}>✕</Text>
+            </TouchableOpacity>
+            <Text style={s.modalTitle}>{sel ? '✏️ تعديل عميل' : '➕ إضافة عميل'}</Text>
+            <View style={{width:30}} />
+          </View>
+          <ScrollView style={{padding:16}}>
+            {[
+              { label:'الاسم الكامل *', key:'name', placeholder:'اسم العميل' },
+              { label:'رقم الهاتف 1 *', key:'phone1', placeholder:'0912345678', keyboard:'phone-pad' },
+              { label:'رقم الهاتف 2', key:'phone2', placeholder:'اختياري', keyboard:'phone-pad' },
+              { label:'الرقم الوطني *', key:'nationalId', placeholder:'الرقم الوطني', keyboard:'numeric' },
+              { label:'جواز السفر', key:'passportId', placeholder:'اختياري' },
+              { label:'رقم الحساب', key:'accountNumber', placeholder:'اختياري' },
+              { label:'رقم IBAN', key:'iban', placeholder:'اختياري' },
+              { label:'المبلغ المدفوع', key:'amount', placeholder:'0.00', keyboard:'numeric' },
+              { label:'تم الشراء من طرف', key:'purchasedBy', placeholder:'اسم الموظف' },
+              { label:'تاريخ الحجز', key:'bookingDate', placeholder:'2026-01-01' },
+              { label:'الرقم السري', key:'pinCode', placeholder:'1234', keyboard:'numeric' },
+              { label:'بيعت إلى', key:'soldTo', placeholder:'اسم المشتري' },
+              { label:'ملاحظات', key:'notes', placeholder:'ملاحظات إضافية', multi:true },
+            ].map(({ label, key, placeholder, keyboard, multi }) => (
+              <View key={key} style={s.fg}>
+                <Text style={s.label}>{label}</Text>
+                <TextInput style={[s.input, multi && {height:80}]}
+                  placeholder={placeholder} placeholderTextColor="#8a9ab5"
+                  value={form[key] || ''} onChangeText={v => set(key, v)}
+                  keyboardType={keyboard || 'default'}
+                  multiline={multi} textAlignVertical={multi ? 'top' : 'center'} />
+              </View>
+            ))}
+
+            <View style={s.fg}>
+              <Text style={s.label}>المصرف *</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                {BANKS.map(b => (
+                  <TouchableOpacity key={b} style={[s.chip, form.bankType === b && s.chipOn]}
+                    onPress={() => set('bankType', b)}>
+                    <Text style={[s.chipT, form.bankType === b && s.chipTOn]}>{b}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+              {form.bankType === 'أخرى' && (
+                <TextInput style={[s.input, {marginTop:8}]}
+                  placeholder="اكتب اسم المصرف"
+                  placeholderTextColor="#8a9ab5"
+                  value={form.bankTypeOther || ''}
+                  onChangeText={v => set('bankTypeOther', v)} />
+              )}
+            </View>
+
+            <View style={s.fg}>
+              <Text style={s.label}>نوع الحجز</Text>
+              <View style={{flexDirection:'row', gap:8}}>
+                {['كاش','حوالة','بطاقة'].map(t => (
+                  <TouchableOpacity key={t} style={[s.chip, form.paymentType === t && s.chipOn]}
+                    onPress={() => set('paymentType', t)}>
+                    <Text style={[s.chipT, form.paymentType === t && s.chipTOn]}>{t}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            <View style={s.fg}>
+              <Text style={s.label}>العملة</Text>
+              <View style={{flexDirection:'row', gap:8}}>
+                {['د.ل','USD','EUR'].map(c => (
+                  <TouchableOpacity key={c} style={[s.chip, form.currency === c && s.chipOn]}
+                    onPress={() => set('currency', c)}>
+                    <Text style={[s.chipT, form.currency === c && s.chipTOn]}>{c}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            <TouchableOpacity style={s.chk} onPress={() => set('cardBooked', !form.cardBooked)}>
+              <Text style={s.chkBox}>{form.cardBooked ? '✅' : '⬜'}</Text>
+              <Text style={s.chkL}>تم حجز البطاقة</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={s.chk} onPress={() => set('isSold', !form.isSold)}>
+              <Text style={s.chkBox}>{form.isSold ? '✅' : '⬜'}</Text>
+              <Text style={s.chkL}>تم بيع البطاقة</Text>
+            </TouchableOpacity>
+
+            <View style={{height:40}} />
+          </ScrollView>
+
+          <View style={s.modalFoot}>
+            <TouchableOpacity style={s.cancelBtn} onPress={() => setModal(null)}>
+              <Text style={s.cancelT}>إلغاء</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={s.saveBtn} onPress={handleSave} disabled={saving}>
+              {saving ? <ActivityIndicator color="#0a1628" /> : <Text style={s.saveT}>💾 حفظ</Text>}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+    </View>
+  );
+}
+
+const s = StyleSheet.create({
+  wrap:       { flex:1, backgroundColor:'#0a1628' },
+  header:     { flexDirection:'row', justifyContent:'space-between', alignItems:'center', padding:16, paddingTop:50, backgroundColor:'#0f2040', borderBottomWidth:1, borderBottomColor:'rgba(201,168,76,0.2)' },
+  title:      { fontSize:16, fontWeight:'900', color:'#c9a84c' },
+  logout:     { color:'#8a9ab5', fontSize:13 },
+  addH:       { color:'#c9a84c', fontSize:24, fontWeight:'700' },
+  editH:      { color:'#c9a84c', fontSize:16 },
+  subWarn:    { backgroundColor:'rgba(243,156,18,0.1)', borderWidth:1, borderColor:'rgba(243,156,18,0.3)', borderRadius:10, margin:12, marginBottom:0, padding:10 },
+  subWarnT:   { color:'#f39c12', fontSize:12, textAlign:'center' },
+  tabs:       { flexDirection:'row', backgroundColor:'rgba(0,0,0,0.2)', margin:12, borderRadius:10, padding:3 },
+  tab:        { flex:1, padding:8, borderRadius:7, alignItems:'center' },
+  tabOn:      { backgroundColor:'#c9a84c' },
+  tabT:       { color:'#8a9ab5', fontSize:13, fontWeight:'600' },
+  tabTOn:     { color:'#0a1628', fontWeight:'700' },
+  statsGrid:  { flexDirection:'row', flexWrap:'wrap', gap:10, marginBottom:16 },
+  statCard:   { width:'47%', backgroundColor:'#0f2040', borderRadius:12, padding:14, alignItems:'center', borderWidth:1, borderColor:'rgba(201,168,76,0.15)' },
+  statI:      { fontSize:24, marginBottom:6 },
+  statV:      { fontSize:22, fontWeight:'900' },
+  statL:      { fontSize:11, color:'#8a9ab5', marginTop:3, textAlign:'center' },
+  waBtn:      { backgroundColor:'rgba(37,211,102,0.1)', borderWidth:1, borderColor:'rgba(37,211,102,0.3)', borderRadius:12, padding:14, alignItems:'center', marginTop:8 },
+  waBtnT:     { color:'#25D366', fontSize:14, fontWeight:'700' },
+  searchRow:  { flexDirection:'row', alignItems:'center', marginHorizontal:14, marginBottom:4, gap:8 },
+  search:     { backgroundColor:'rgba(255,255,255,0.06)', borderRadius:10, padding:12, color:'#f8f6f0', borderWidth:1, borderColor:'rgba(255,255,255,0.1)', textAlign:'right' },
+  filterBtn:  { backgroundColor:'rgba(255,255,255,0.06)', borderRadius:10, padding:12, borderWidth:1, borderColor:'rgba(255,255,255,0.1)' },
+  filterBtnT: { fontSize:18 },
+  filtersBox: { backgroundColor:'rgba(15,32,64,0.9)', marginHorizontal:14, borderRadius:12, padding:12, marginBottom:8, borderWidth:1, borderColor:'rgba(201,168,76,0.15)' },
+  filterLabel:{ fontSize:11, color:'#8a9ab5', marginBottom:6, fontWeight:'600' },
+  fChip:      { paddingHorizontal:12, paddingVertical:6, borderRadius:20, borderWidth:1, borderColor:'rgba(255,255,255,0.12)', backgroundColor:'rgba(255,255,255,0.05)', marginLeft:6 },
+  fChipOn:    { borderColor:'#c9a84c', backgroundColor:'rgba(201,168,76,0.15)' },
+  fChipT:     { color:'#8a9ab5', fontSize:12 },
+  fChipTOn:   { color:'#c9a84c', fontWeight:'700' },
+  resultCount:{ fontSize:11, color:'#8a9ab5', marginHorizontal:14, marginBottom:4 },
+  card:       { backgroundColor:'#0f2040', borderRadius:12, padding:14, marginBottom:10, borderWidth:1, borderColor:'rgba(201,168,76,0.15)' },
+  soldCard:   { opacity:0.5 },
+  cardTop:    { flexDirection:'row', justifyContent:'space-between', alignItems:'center', marginBottom:6 },
+  name:       { fontSize:15, fontWeight:'700', color:'#f8f6f0', flex:1, marginLeft:8 },
+  bank:       { fontSize:12, color:'#8a9ab5', marginBottom:2 },
+  phone:      { fontSize:12, color:'#c5cedd', marginBottom:2 },
+  amount:     { fontSize:13, color:'#c9a84c', fontWeight:'700', marginBottom:8 },
+  actions:    { flexDirection:'row', gap:8, marginTop:6 },
+  editBtn:    { backgroundColor:'rgba(201,168,76,0.1)', borderRadius:8, paddingHorizontal:12, paddingVertical:6, borderWidth:1, borderColor:'rgba(201,168,76,0.3)' },
+  editT:      { color:'#c9a84c', fontSize:12, fontWeight:'600' },
+  delBtn:     { backgroundColor:'rgba(231,76,60,0.1)', borderRadius:8, paddingHorizontal:12, paddingVertical:6, borderWidth:1, borderColor:'rgba(231,76,60,0.3)' },
+  delT:       { color:'#e74c3c', fontSize:12, fontWeight:'600' },
+  badge:      { borderRadius:20, paddingHorizontal:8, paddingVertical:3 },
+  badgeOk:    { backgroundColor:'rgba(46,204,113,0.1)', borderWidth:1, borderColor:'rgba(46,204,113,0.3)' },
+  badgeWarn:  { backgroundColor:'rgba(243,156,18,0.1)', borderWidth:1, borderColor:'rgba(243,156,18,0.3)' },
+  badgeSold:  { backgroundColor:'rgba(231,76,60,0.1)', borderWidth:1, borderColor:'rgba(231,76,60,0.3)' },
+  badgeT:     { fontSize:11, fontWeight:'700', color:'#f8f6f0' },
+  empty:      { alignItems:'center', paddingTop:60 },
+  emptyI:     { fontSize:40, opacity:0.3, marginBottom:10 },
+  emptyT:     { color:'#8a9ab5', fontSize:13 },
+  fab:        { position:'absolute', bottom:30, left:20, width:56, height:56, borderRadius:28, backgroundColor:'#c9a84c', alignItems:'center', justifyContent:'center', elevation:5 },
+  fabT:       { fontSize:28, color:'#0a1628', fontWeight:'700', marginTop:-2 },
+  modalWrap:  { flex:1, backgroundColor:'#0a1628' },
+  modalHead:  { flexDirection:'row', alignItems:'center', justifyContent:'space-between', padding:16, paddingTop:50, backgroundColor:'#0f2040', borderBottomWidth:1, borderBottomColor:'rgba(201,168,76,0.2)' },
+  modalTitle: { fontSize:16, fontWeight:'900', color:'#c9a84c' },
+  modalClose: { fontSize:18, color:'#8a9ab5', padding:4 },
+  modalFoot:  { flexDirection:'row', gap:12, padding:16, backgroundColor:'#0f2040', borderTopWidth:1, borderTopColor:'rgba(201,168,76,0.2)' },
+  row:        { flexDirection:'row', justifyContent:'space-between', alignItems:'center', paddingVertical:10, borderBottomWidth:1, borderBottomColor:'rgba(255,255,255,0.05)' },
+  rowL:       { fontSize:12, color:'#8a9ab5', minWidth:120 },
+  rowV:       { fontSize:13, color:'#f8f6f0', fontWeight:'500', flex:1 },
+  fg:         { marginBottom:14 },
+  label:      { fontSize:12, color:'#c5cedd', marginBottom:5, fontWeight:'500' },
+  input:      { backgroundColor:'rgba(255,255,255,0.06)', borderWidth:1.5, borderColor:'rgba(255,255,255,0.1)', borderRadius:10, padding:12, color:'#f8f6f0', fontSize:15, textAlign:'right' },
+  chip:       { paddingHorizontal:14, paddingVertical:8, borderRadius:20, borderWidth:1.5, borderColor:'rgba(255,255,255,0.15)', backgroundColor:'rgba(255,255,255,0.05)', marginLeft:8 },
+  chipOn:     { borderColor:'#c9a84c', backgroundColor:'rgba(201,168,76,0.15)' },
+  chipT:      { color:'#8a9ab5', fontSize:13 },
+  chipTOn:    { color:'#c9a84c', fontWeight:'700' },
+  chk:        { flexDirection:'row', alignItems:'center', gap:10, marginBottom:12 },
+  chkBox:     { fontSize:20 },
+  chkL:       { fontSize:14, color:'#c5cedd' },
+  cancelBtn:  { flex:1, backgroundColor:'rgba(255,255,255,0.06)', borderRadius:10, padding:14, alignItems:'center', borderWidth:1, borderColor:'rgba(255,255,255,0.1)' },
+  cancelT:    { color:'#8a9ab5', fontSize:15 },
+  saveBtn:    { flex:2, backgroundColor:'#c9a84c', borderRadius:10, padding:14, alignItems:'center' },
+  saveT:      { color:'#0a1628', fontSize:15, fontWeight:'700' },
+});
