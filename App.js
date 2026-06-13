@@ -4,12 +4,9 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { onAuthStateChanged } from 'firebase/auth';
 import { useEffect, useState } from 'react';
-import { View, Text, ActivityIndicator, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { View, Text, ActivityIndicator, TouchableOpacity, StyleSheet } from 'react-native';
 import { auth, db } from './firebase';
-import {
-  collection, query, where, onSnapshot,
-  doc, updateDoc
-} from 'firebase/firestore';
+import { collection, query, where, onSnapshot, doc, updateDoc } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
 
 import AuthScreen from './screens/AuthScreen';
@@ -36,13 +33,12 @@ export default function App() {
   const [ready, setReady] = useState(false);
   const [subStatus, setSubStatus] = useState(null);
   const [subDays, setSubDays] = useState(null);
-  const [subDoc, setSubDoc] = useState(null);
 
   useEffect(() => {
     return onAuthStateChanged(auth, u => {
       setUser(u);
       setReady(true);
-      if (!u) { setSubStatus(null); setSubDays(null); setSubDoc(null); }
+      if (!u) { setSubStatus(null); setSubDays(null); }
     });
   }, []);
 
@@ -58,11 +54,9 @@ export default function App() {
       const sub = subDocSnap.data();
       const days = daysLeft(sub.expiresAt);
       setSubDays(days);
-      setSubDoc(subDocSnap);
 
       if (days <= 0) { setSubStatus('expired'); return; }
 
-      // تسجيل الجهاز
       try {
         const AsyncStorage = require('@react-native-async-storage/async-storage').default;
         let deviceId = await AsyncStorage.getItem('deviceId');
@@ -78,7 +72,6 @@ export default function App() {
         };
 
         if (devices[deviceId]) {
-          // جهاز معروف — تحديث lastSeen
           await updateDoc(doc(db, 'subscriptions', subDocSnap.id), {
             [`devices.${deviceId}`]: deviceEntry
           });
@@ -106,7 +99,6 @@ export default function App() {
     </View>
   );
 
-  // شاشة تجاوز حد الأجهزة
   if (user && subStatus === 'device_limit') return (
     <View style={st.loading}>
       <StatusBar style="light" />
@@ -130,17 +122,15 @@ export default function App() {
             <Stack.Screen name="Activation">
               {props => <ActivationScreen {...props} user={user} subStatus={subStatus} />}
             </Stack.Screen>
-          ) : user.uid === ADMIN_UID ? (
+          ) : (
             <>
-              <Stack.Screen name="Admin" component={AdminScreen} />
               <Stack.Screen name="Home">
                 {props => <HomeScreen {...props} subDays={subDays} />}
               </Stack.Screen>
+              {user.uid === ADMIN_UID && (
+                <Stack.Screen name="Admin" component={AdminScreen} />
+              )}
             </>
-          ) : (
-            <Stack.Screen name="Home">
-              {props => <HomeScreen {...props} subDays={subDays} />}
-            </Stack.Screen>
           )}
         </Stack.Navigator>
       </NavigationContainer>
