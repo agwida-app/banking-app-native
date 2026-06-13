@@ -15,7 +15,8 @@
         "foregroundImage": "./icon.png",
         "backgroundColor": "#0a1628"
       },
-      "package": "com.agwida.bankingapp"
+      "package": "com.agwida.bankingapp",
+      "versionCode": 1
     },
     "extra": {
       "eas": {
