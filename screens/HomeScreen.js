@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity,
   StyleSheet, TextInput, ActivityIndicator,
-  Modal, ScrollView, Alert, Linking, Clipboard
+  Modal, ScrollView, Alert, Linking, Clipboard, Share
 } from 'react-native';
 import { signOut } from 'firebase/auth';
 import {
@@ -32,6 +32,140 @@ const copy = (v, l) => {
   Clipboard.setString(v);
   Alert.alert('✅ تم النسخ', `تم نسخ ${l}`);
 };
+
+function exportCSV(clients) {
+  const cols = [
+    ['الاسم', c => c.name || ''],
+    ['المصرف', c => c.bankType === 'أخرى' ? (c.bankTypeOther || 'أخرى') : c.bankType || ''],
+    ['الهاتف 1', c => c.phone1 || ''],
+    ['الهاتف 2', c => c.phone2 || ''],
+    ['الرقم الوطني', c => c.nationalId || ''],
+    ['جواز السفر', c => c.passportId || ''],
+    ['رقم الحساب', c => c.accountNumber || ''],
+    ['IBAN', c => c.iban || ''],
+    ['المبلغ', c => c.amount || ''],
+    ['العملة', c => c.currency || 'د.ل'],
+    ['نوع الحجز', c => c.paymentType || ''],
+    ['حالة البطاقة', c => c.cardBooked ? 'تم الحجز' : 'لم يتم'],
+    ['تاريخ الحجز', c => c.bookingDate || ''],
+    ['الرقم السري', c => c.pinCode || ''],
+    ['تم البيع', c => c.isSold ? 'نعم' : 'لا'],
+    ['بيعت إلى', c => c.soldTo || ''],
+    ['اشترى من طرف', c => c.purchasedBy || ''],
+    ['ملاحظات', c => c.notes || ''],
+  ];
+  const H = cols.map(([h]) => h);
+  const R = clients.map(c => cols.map(([, fn]) => fn(c)));
+  const esc = v => `"${String(v).replace(/"/g, '""')}"`;
+  const csv = [H, ...R].map(r => r.map(esc).join(',')).join('\r\n');
+  const bom = '\uFEFF';
+  Share.share({ message: bom + csv, title: 'قائمة العملاء' })
+    .catch(() => Alert.alert('خطأ', 'تعذر تصدير CSV'));
+}
+
+function exportPDF(clients, single = null) {
+  const list = single ? [single] : clients;
+  const date = new Date().toLocaleDateString('ar-LY');
+  const title = single ? `بيانات العميل: ${single.name}` : 'تقرير قائمة العملاء';
+
+  const rows = list.map((c, i) => {
+    const bank = c.bankType === 'أخرى' ? (c.bankTypeOther || 'أخرى') : c.bankType;
+    const status = c.isSold ? 'مباع' : c.cardBooked ? 'تم الحجز' : 'لم يتم';
+    const sc = c.isSold ? '#c0392b' : c.cardBooked ? '#166534' : '#92400e';
+    const sb = c.isSold ? '#fef2f2' : c.cardBooked ? '#f0fdf4' : '#fffbeb';
+    return `<tr>
+      <td style="text-align:center;color:#9ca3af;font-size:10px">${i+1}</td>
+      <td style="font-weight:700;color:#111827">${c.name||'—'}</td>
+      <td>${bank||'—'}</td>
+      <td style="font-family:monospace;direction:ltr">${c.phone1||'—'}</td>
+      <td style="font-family:monospace;direction:ltr;font-size:10px">${c.nationalId||'—'}</td>
+      <td style="font-weight:700;color:#92400e">${c.amount?parseFloat(c.amount).toLocaleString()+' '+c.currency:'—'}</td>
+      <td>${c.paymentType||'—'}</td>
+      <td><span style="background:${sb};color:${sc};border:1px solid ${sc}33;border-radius:4px;padding:2px 7px;font-size:10px;font-weight:700">${status}</span></td>
+      <td style="font-family:monospace;font-weight:700;color:#1e40af">${c.pinCode||'—'}</td>
+      <td style="font-size:10px;color:#374151">${c.soldTo||'—'}</td>
+      <td style="font-size:10px;color:#374151">${c.purchasedBy||'—'}</td>
+    </tr>`;
+  }).join('');
+
+  const detailSection = single ? `
+    <div style="margin-top:20px;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden">
+      <div style="background:#1e3a5f;color:#f0c040;padding:10px 16px;font-size:13px;font-weight:700">📋 البيانات التفصيلية</div>
+      <table style="width:100%;border-collapse:collapse">
+        ${[
+          ['الاسم الكامل', single.name],
+          ['المصرف', single.bankType==='أخرى'?(single.bankTypeOther||'أخرى'):single.bankType],
+          ['الهاتف 1', single.phone1],
+          ['الهاتف 2', single.phone2||'—'],
+          ['الرقم الوطني', single.nationalId],
+          ['جواز السفر', single.passportId||'—'],
+          ['رقم الحساب', single.accountNumber||'—'],
+          ['رقم IBAN', single.iban||'—'],
+          ['المبلغ المدفوع', single.amount?parseFloat(single.amount).toLocaleString()+' '+single.currency:'—'],
+          ['تم الشراء من طرف', single.purchasedBy||'—'],
+          ['نوع الحجز', single.paymentType||'—'],
+          ['حالة البطاقة', single.cardBooked?'✅ تم الحجز':'⏳ لم يتم بعد'],
+          ['تاريخ الحجز', single.bookingDate||'—'],
+          ['الرقم السري', single.pinCode||'—'],
+          ['حالة البيع', single.isSold?'🔴 تم البيع':'🟢 لم يُباع'],
+          ['بيعت إلى', single.soldTo||'—'],
+          ['ملاحظات', single.notes||'—'],
+          ['تاريخ الإضافة', fmt(single.createdAt)],
+          ['أضيف بواسطة', single.createdBy||'—'],
+        ].map(([l,v],i)=>`<tr style="background:${i%2===0?'#fff':'#f9fafb'}">
+          <td style="padding:8px 14px;font-size:12px;color:#6b7280;font-weight:600;width:160px;border-bottom:1px solid #f3f4f6">${l}</td>
+          <td style="padding:8px 14px;font-size:12px;color:#111827;border-bottom:1px solid #f3f4f6">${v}</td>
+        </tr>`).join('')}
+      </table>
+    </div>` : '';
+
+  const html = `<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8"/>
+<title>${title}</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:Arial,sans-serif;direction:rtl;background:#fff;color:#111827;font-size:12px}
+  .wrap{padding:20px;max-width:1100px;margin:0 auto}
+  .hdr{background:linear-gradient(135deg,#1e3a5f,#0f2040);border-radius:10px;padding:16px 22px;margin-bottom:18px;display:flex;justify-content:space-between;align-items:center}
+  .hdr h1{font-size:17px;font-weight:900;color:#f0c040;margin-bottom:3px}
+  .hdr p{font-size:11px;color:#93a3b8}
+  .tw{border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;margin-bottom:18px}
+  table{width:100%;border-collapse:collapse}
+  thead tr{background:linear-gradient(135deg,#1e3a5f,#0f2040)}
+  th{padding:10px 9px;text-align:right;font-size:11px;font-weight:700;color:#f0c040;white-space:nowrap}
+  td{padding:9px;border-bottom:1px solid #f3f4f6;font-size:11px;color:#374151;vertical-align:middle}
+  tr:nth-child(even) td{background:#fafafa}
+  .ft{display:flex;justify-content:space-between;border-top:2px solid #f0c040;padding-top:10px;font-size:10px;color:#9ca3af;margin-top:4px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hdr">
+    <div>
+      <h1>💳 ${title}</h1>
+      <p>تاريخ التقرير: ${date} · إجمالي: ${list.length} عميل</p>
+    </div>
+  </div>
+  <div class="tw">
+    <table>
+      <thead><tr>
+        <th>#</th><th>الاسم</th><th>المصرف</th><th>الهاتف</th>
+        <th>الرقم الوطني</th><th>المبلغ</th><th>نوع الحجز</th>
+        <th>الحالة</th><th>الرقم السري</th><th>بيعت إلى</th><th>اشترى من طرف</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+  </div>
+  ${detailSection}
+  <div class="ft"><span>تطبيق إدارة بطاقاتك</span><span>${date}</span></div>
+</div>
+</body></html>`;
+
+  Share.share({ message: html, title: title })
+    .catch(() => Alert.alert('خطأ', 'تعذر تصدير PDF'));
+}
 
 export default function HomeScreen({ subDays }) {
   const [clients, setClients] = useState([]);
@@ -82,7 +216,11 @@ export default function HomeScreen({ subDays }) {
       || (filterStatus === 'sold' && c.isSold);
     return m && fb && fs;
   }).sort((a, b) => {
-    if (sortBy === 'alpha') return (a.name || '').localeCompare(b.name || '', 'ar');
+    if (sortBy === 'oldest') {
+      const da = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(0);
+      const db2 = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(0);
+      return da - db2;
+    }
     if (sortBy === 'booking_asc') {
       const da = a.bookingDate ? new Date(a.bookingDate) : new Date(0);
       const db2 = b.bookingDate ? new Date(b.bookingDate) : new Date(0);
@@ -93,7 +231,7 @@ export default function HomeScreen({ subDays }) {
       const db2 = b.bookingDate ? new Date(b.bookingDate) : new Date(0);
       return db2 - da;
     }
-    return 0;
+    return 0; // newest — default من Firestore
   });
 
   const total = clients.length;
@@ -201,6 +339,16 @@ export default function HomeScreen({ subDays }) {
       {/* Clients Tab */}
       {tab === 'clients' && (
         <>
+          {/* أزرار التصدير */}
+          <View style={s.exportRow}>
+            <TouchableOpacity style={s.exportBtn} onPress={() => exportPDF(filtered)}>
+              <Text style={s.exportT}>🖨️ PDF</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={s.exportBtn} onPress={() => exportCSV(clients)}>
+              <Text style={s.exportT}>📤 CSV</Text>
+            </TouchableOpacity>
+          </View>
+
           <View style={s.searchRow}>
             <TextInput style={[s.search, {flex:1}]}
               placeholder="🔍 بحث بالاسم، الجوال، الرقم الوطني، IBAN..."
@@ -216,10 +364,10 @@ export default function HomeScreen({ subDays }) {
               <Text style={s.filterLabel}>الفرز:</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                 {[
-                  {v:'newest', l:'الأحدث'},
-                  {v:'alpha', l:'أبجدي'},
-                  {v:'booking_asc', l:'حجز ↑'},
-                  {v:'booking_desc', l:'حجز ↓'},
+                  {v:'newest', l:'📅 الأحدث'},
+                  {v:'oldest', l:'📅 الأقدم'},
+                  {v:'booking_asc', l:'📅 حجز ↑'},
+                  {v:'booking_desc', l:'📅 حجز ↓'},
                 ].map(item => (
                   <TouchableOpacity key={item.v}
                     style={[s.fChip, sortBy === item.v && s.fChipOn]}
@@ -299,6 +447,9 @@ export default function HomeScreen({ subDays }) {
                       <TouchableOpacity style={s.editBtn} onPress={() => openEdit(c)}>
                         <Text style={s.editT}>✏️ تعديل</Text>
                       </TouchableOpacity>
+                      <TouchableOpacity style={s.pdfBtn} onPress={() => exportPDF(clients, c)}>
+                        <Text style={s.pdfT}>🖨️ PDF</Text>
+                      </TouchableOpacity>
                       <TouchableOpacity style={s.delBtn} onPress={() => handleDelete(c)}>
                         <Text style={s.delT}>🗑 حذف</Text>
                       </TouchableOpacity>
@@ -366,7 +517,12 @@ export default function HomeScreen({ subDays }) {
             <TouchableOpacity style={s.cancelBtn} onPress={() => setModal(null)}>
               <Text style={s.cancelT}>إغلاق</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={[s.saveBtn, {backgroundColor:'#e74c3c'}]} onPress={() => handleDelete(sel)}>
+            <TouchableOpacity style={[s.saveBtn, {backgroundColor:'#1e40af', flex:1}]}
+              onPress={() => exportPDF(clients, sel)}>
+              <Text style={s.saveT}>🖨️ PDF</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[s.saveBtn, {backgroundColor:'#e74c3c', flex:1}]}
+              onPress={() => handleDelete(sel)}>
               <Text style={s.saveT}>🗑 حذف</Text>
             </TouchableOpacity>
           </View>
@@ -421,8 +577,7 @@ export default function HomeScreen({ subDays }) {
               </ScrollView>
               {form.bankType === 'أخرى' && (
                 <TextInput style={[s.input, {marginTop:8}]}
-                  placeholder="اكتب اسم المصرف"
-                  placeholderTextColor="#8a9ab5"
+                  placeholder="اكتب اسم المصرف" placeholderTextColor="#8a9ab5"
                   value={form.bankTypeOther || ''}
                   onChangeText={v => set('bankTypeOther', v)} />
               )}
@@ -443,7 +598,7 @@ export default function HomeScreen({ subDays }) {
             <View style={s.fg}>
               <Text style={s.label}>العملة</Text>
               <View style={{flexDirection:'row', gap:8}}>
-                {['د.ل','USD','EUR'].map(c => (
+                {['د.ل','USD'].map(c => (
                   <TouchableOpacity key={c} style={[s.chip, form.currency === c && s.chipOn]}
                     onPress={() => set('currency', c)}>
                     <Text style={[s.chipT, form.currency === c && s.chipTOn]}>{c}</Text>
@@ -499,6 +654,9 @@ const s = StyleSheet.create({
   statL:      { fontSize:11, color:'#8a9ab5', marginTop:3, textAlign:'center' },
   waBtn:      { backgroundColor:'rgba(37,211,102,0.1)', borderWidth:1, borderColor:'rgba(37,211,102,0.3)', borderRadius:12, padding:14, alignItems:'center', marginTop:8 },
   waBtnT:     { color:'#25D366', fontSize:14, fontWeight:'700' },
+  exportRow:  { flexDirection:'row', gap:8, marginHorizontal:14, marginBottom:8, marginTop:4 },
+  exportBtn:  { backgroundColor:'rgba(255,255,255,0.06)', borderRadius:10, paddingHorizontal:16, paddingVertical:9, borderWidth:1, borderColor:'rgba(255,255,255,0.15)', flex:1, alignItems:'center' },
+  exportT:    { color:'#c9a84c', fontSize:13, fontWeight:'700' },
   searchRow:  { flexDirection:'row', alignItems:'center', marginHorizontal:14, marginBottom:4, gap:8 },
   search:     { backgroundColor:'rgba(255,255,255,0.06)', borderRadius:10, padding:12, color:'#f8f6f0', borderWidth:1, borderColor:'rgba(255,255,255,0.1)', textAlign:'right' },
   filterBtn:  { backgroundColor:'rgba(255,255,255,0.06)', borderRadius:10, padding:12, borderWidth:1, borderColor:'rgba(255,255,255,0.1)' },
@@ -520,6 +678,8 @@ const s = StyleSheet.create({
   actions:    { flexDirection:'row', gap:8, marginTop:6 },
   editBtn:    { backgroundColor:'rgba(201,168,76,0.1)', borderRadius:8, paddingHorizontal:12, paddingVertical:6, borderWidth:1, borderColor:'rgba(201,168,76,0.3)' },
   editT:      { color:'#c9a84c', fontSize:12, fontWeight:'600' },
+  pdfBtn:     { backgroundColor:'rgba(30,64,175,0.1)', borderRadius:8, paddingHorizontal:12, paddingVertical:6, borderWidth:1, borderColor:'rgba(30,64,175,0.3)' },
+  pdfT:       { color:'#60a5fa', fontSize:12, fontWeight:'600' },
   delBtn:     { backgroundColor:'rgba(231,76,60,0.1)', borderRadius:8, paddingHorizontal:12, paddingVertical:6, borderWidth:1, borderColor:'rgba(231,76,60,0.3)' },
   delT:       { color:'#e74c3c', fontSize:12, fontWeight:'600' },
   badge:      { borderRadius:20, paddingHorizontal:8, paddingVertical:3 },
@@ -536,7 +696,7 @@ const s = StyleSheet.create({
   modalHead:  { flexDirection:'row', alignItems:'center', justifyContent:'space-between', padding:16, paddingTop:50, backgroundColor:'#0f2040', borderBottomWidth:1, borderBottomColor:'rgba(201,168,76,0.2)' },
   modalTitle: { fontSize:16, fontWeight:'900', color:'#c9a84c' },
   modalClose: { fontSize:18, color:'#8a9ab5', padding:4 },
-  modalFoot:  { flexDirection:'row', gap:12, padding:16, backgroundColor:'#0f2040', borderTopWidth:1, borderTopColor:'rgba(201,168,76,0.2)' },
+  modalFoot:  { flexDirection:'row', gap:8, padding:16, backgroundColor:'#0f2040', borderTopWidth:1, borderTopColor:'rgba(201,168,76,0.2)' },
   row:        { flexDirection:'row', justifyContent:'space-between', alignItems:'center', paddingVertical:10, borderBottomWidth:1, borderBottomColor:'rgba(255,255,255,0.05)' },
   rowL:       { fontSize:12, color:'#8a9ab5', minWidth:120 },
   rowV:       { fontSize:13, color:'#f8f6f0', fontWeight:'500', flex:1 },
