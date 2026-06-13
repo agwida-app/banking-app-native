@@ -2,6 +2,7 @@
   "expo": {
     "name": "إدارة بطاقاتك",
     "slug": "banking-app-native",
+    "owner": "agwidas-organization",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./icon.png",
