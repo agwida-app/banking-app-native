@@ -144,7 +144,7 @@ async function exportPDF(clients, single = null) {
  }
 }
 
-function exportCSV(clients) {
+async function exportCSV(clients) {
  const cols = [
    ['الاسم', c => c.name || ''],
    ['المصرف', c => c.bankType === 'أخرى' ? (c.bankTypeOther || 'أخرى') : c.bankType || ''],
@@ -169,17 +169,18 @@ function exportCSV(clients) {
  const R = clients.map(c => cols.map(([, fn]) => fn(c)));
  const esc = v => `"${String(v).replace(/"/g, '""')}"`;
  const csv = '\uFEFF' + [H, ...R].map(r => r.map(esc).join(',')).join('\r\n');
-
- const fileName = `clients_${Date.now()}.csv`;
- Print.printToFileAsync({ html: csv, base64: false })
-   .then(async ({ uri }) => {
-     const csvUri = uri.replace('.pdf', '.csv');
-     await Sharing.shareAsync(uri, {
-       mimeType: 'text/csv',
-       dialogTitle: 'قائمة العملاء CSV',
-     });
-   })
-   .catch(e => Alert.alert('خطأ', e.message));
+ try {
+   const { uri } = await Print.printToFileAsync({
+     html: `<pre>${csv}</pre>`,
+     base64: false
+   });
+   await Sharing.shareAsync(uri, {
+     mimeType: 'text/csv',
+     dialogTitle: 'قائمة العملاء',
+   });
+ } catch (e) {
+   Alert.alert('خطأ', e.message);
+ }
 }
 
 export default function HomeScreen({ subDays, navigation }) {
@@ -303,32 +304,32 @@ export default function HomeScreen({ subDays, navigation }) {
  const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
 
  const viewRows = sel ? [
-   { l: 'الاسم الكامل', v: sel.name, canCopy: false },
-   { l: 'المصرف', v: sel.bankType === 'أخرى' ? sel.bankTypeOther : sel.bankType, canCopy: false },
-   { l: 'الهاتف 1', v: sel.phone1, canCopy: true },
-   { l: 'الهاتف 2', v: sel.phone2 || '—', canCopy: true },
-   { l: 'الرقم الوطني', v: sel.nationalId, canCopy: true },
-   { l: 'جواز السفر', v: sel.passportId || '—', canCopy: true },
-   { l: 'رقم الحساب', v: sel.accountNumber || '—', canCopy: true },
-   { l: 'IBAN', v: sel.iban || '—', canCopy: true },
-   { l: 'المبلغ', v: sel.amount ? `${parseFloat(sel.amount).toLocaleString('en')} ${sel.currency}` : '—', canCopy: false },
-   { l: 'تم الشراء من طرف', v: sel.purchasedBy || '—', canCopy: false },
-   { l: 'نوع الحجز', v: sel.paymentType || '—', canCopy: false },
-   { l: 'حالة البطاقة', v: sel.cardBooked ? '✅ تم الحجز' : '⏳ لم يتم', canCopy: false },
-   { l: 'تاريخ الحجز', v: sel.bookingDate || '—', canCopy: false },
-   { l: 'الرقم السري', v: sel.pinCode || '—', canCopy: true },
-   { l: 'حالة البيع', v: sel.isSold ? '🔴 تم البيع' : '🟢 لم يُباع', canCopy: false },
-   { l: 'بيعت إلى', v: sel.soldTo || '—', canCopy: false },
-   { l: 'ملاحظات', v: sel.notes || '—', canCopy: false },
-   { l: 'تاريخ الإضافة', v: fmt(sel.createdAt), canCopy: false },
-   { l: 'أضيف بواسطة', v: sel.createdBy || '—', canCopy: false },
+   { l:'الاسم الكامل', v:sel.name, canCopy:false },
+   { l:'المصرف', v:sel.bankType==='أخرى'?sel.bankTypeOther:sel.bankType, canCopy:false },
+   { l:'الهاتف 1', v:sel.phone1, canCopy:true },
+   { l:'الهاتف 2', v:sel.phone2||'—', canCopy:true },
+   { l:'الرقم الوطني', v:sel.nationalId, canCopy:true },
+   { l:'جواز السفر', v:sel.passportId||'—', canCopy:true },
+   { l:'رقم الحساب', v:sel.accountNumber||'—', canCopy:true },
+   { l:'IBAN', v:sel.iban||'—', canCopy:true },
+   { l:'المبلغ', v:sel.amount?`${parseFloat(sel.amount).toLocaleString('en')} ${sel.currency}`:'—', canCopy:false },
+   { l:'تم الشراء من طرف', v:sel.purchasedBy||'—', canCopy:false },
+   { l:'نوع الحجز', v:sel.paymentType||'—', canCopy:false },
+   { l:'حالة البطاقة', v:sel.cardBooked?'✅ تم الحجز':'⏳ لم يتم', canCopy:false },
+   { l:'تاريخ الحجز', v:sel.bookingDate||'—', canCopy:false },
+   { l:'الرقم السري', v:sel.pinCode||'—', canCopy:true },
+   { l:'حالة البيع', v:sel.isSold?'🔴 تم البيع':'🟢 لم يُباع', canCopy:false },
+   { l:'بيعت إلى', v:sel.soldTo||'—', canCopy:false },
+   { l:'ملاحظات', v:sel.notes||'—', canCopy:false },
+   { l:'تاريخ الإضافة', v:fmt(sel.createdAt), canCopy:false },
+   { l:'أضيف بواسطة', v:sel.createdBy||'—', canCopy:false },
  ] : [];
 
  const sections = [
-   { title: '📋 البيانات الأساسية', rows: viewRows.slice(0, 4) },
-   { title: '🏦 البيانات المصرفية', rows: viewRows.slice(4, 8) },
-   { title: '💳 بيانات البطاقة', rows: viewRows.slice(8, 16) },
-   { title: '📝 معلومات إضافية', rows: viewRows.slice(16) },
+   { title:'📋 البيانات الأساسية', rows:viewRows.slice(0,4) },
+   { title:'🏦 البيانات المصرفية', rows:viewRows.slice(4,8) },
+   { title:'💳 بيانات البطاقة', rows:viewRows.slice(8,16) },
+   { title:'📝 معلومات إضافية', rows:viewRows.slice(16) },
  ];
 
  return (
@@ -380,7 +381,7 @@ export default function HomeScreen({ subDays, navigation }) {
              { i:'⏳', v:pending, l:'لم يتم الحجز', c:'#f39c12' },
              { i:'🔴', v:sold, l:'تم البيع', c:'#e74c3c' },
              { i:'💰', v:`${totalAmt.toLocaleString('en')} د.ل`, l:'إجمالي المبالغ', c:'#c9a84c' },
-             { i:'📊', v:total ? `${Math.round(booked/total*100)}%` : '0%', l:'نسبة الحجز', c:'#2ecc71' },
+             { i:'📊', v:total?`${Math.round(booked/total*100)}%`:'0%', l:'نسبة الحجز', c:'#2ecc71' },
            ].map((item, i) => (
              <View key={i} style={s.statCard}>
                <Text style={s.statI}>{item.i}</Text>
@@ -429,9 +430,9 @@ export default function HomeScreen({ subDays, navigation }) {
                  {v:'booking_desc', l:'📅 حجز ↓'},
                ].map(item => (
                  <TouchableOpacity key={item.v}
-                   style={[s.fChip, sortBy === item.v && s.fChipOn]}
+                   style={[s.fChip, sortBy===item.v && s.fChipOn]}
                    onPress={() => setSortBy(item.v)}>
-                   <Text style={[s.fChipT, sortBy === item.v && s.fChipTOn]}>{item.l}</Text>
+                   <Text style={[s.fChipT, sortBy===item.v && s.fChipTOn]}>{item.l}</Text>
                  </TouchableOpacity>
                ))}
              </ScrollView>
@@ -445,9 +446,9 @@ export default function HomeScreen({ subDays, navigation }) {
                  {v:'sold', l:`🔴 مباع (${sold})`},
                ].map(item => (
                  <TouchableOpacity key={item.v}
-                   style={[s.fChip, filterStatus === item.v && s.fChipOn]}
+                   style={[s.fChip, filterStatus===item.v && s.fChipOn]}
                    onPress={() => setFilterStatus(item.v)}>
-                   <Text style={[s.fChipT, filterStatus === item.v && s.fChipTOn]}>{item.l}</Text>
+                   <Text style={[s.fChipT, filterStatus===item.v && s.fChipTOn]}>{item.l}</Text>
                  </TouchableOpacity>
                ))}
              </ScrollView>
@@ -457,15 +458,15 @@ export default function HomeScreen({ subDays, navigation }) {
                  <Text style={[s.filterLabel, {marginTop:8}]}>المصرف:</Text>
                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                    <TouchableOpacity
-                     style={[s.fChip, filterBank === 'all' && s.fChipOn]}
+                     style={[s.fChip, filterBank==='all' && s.fChipOn]}
                      onPress={() => setFilterBank('all')}>
-                     <Text style={[s.fChipT, filterBank === 'all' && s.fChipTOn]}>الكل</Text>
+                     <Text style={[s.fChipT, filterBank==='all' && s.fChipTOn]}>الكل</Text>
                    </TouchableOpacity>
                    {bankNames.map(b => (
                      <TouchableOpacity key={b}
-                       style={[s.fChip, filterBank === b && s.fChipOn]}
+                       style={[s.fChip, filterBank===b && s.fChipOn]}
                        onPress={() => setFilterBank(b)}>
-                       <Text style={[s.fChipT, filterBank === b && s.fChipTOn]}>{b}</Text>
+                       <Text style={[s.fChipT, filterBank===b && s.fChipTOn]}>{b}</Text>
                      </TouchableOpacity>
                    ))}
                  </ScrollView>
@@ -499,9 +500,9 @@ export default function HomeScreen({ subDays, navigation }) {
                        : <View style={[s.badge, s.badgeWarn]}><Text style={s.badgeT}>⏳ انتظار</Text></View>
                      }
                    </View>
-                   <Text style={s.bank}>{c.bankType === 'أخرى' ? c.bankTypeOther : c.bankType}</Text>
+                   <Text style={s.bank}>{c.bankType==='أخرى'?c.bankTypeOther:c.bankType}</Text>
                    <Text style={s.phone}>{c.phone1}</Text>
-                   {c.amount ? <Text style={s.amount}>{parseFloat(c.amount).toLocaleString('en')} {c.currency}</Text> : null}
+                   {c.amount?<Text style={s.amount}>{parseFloat(c.amount).toLocaleString('en')} {c.currency}</Text>:null}
                    <View style={s.actions}>
                      <TouchableOpacity style={s.editBtn} onPress={() => openEdit(c)}>
                        <Text style={s.editT}>✏️ تعديل</Text>
@@ -525,7 +526,7 @@ export default function HomeScreen({ subDays, navigation }) {
      )}
 
      {/* View Modal */}
-     <Modal visible={modal === 'view'} animationType="slide">
+     <Modal visible={modal==='view'} animationType="slide">
        <View style={s.modalWrap}>
          <View style={s.modalHead}>
            <TouchableOpacity onPress={() => setModal(null)}>
@@ -586,10 +587,10 @@ export default function HomeScreen({ subDays, navigation }) {
            <ScrollView>
              {BANKS.map(b => (
                <TouchableOpacity key={b}
-                 style={[s.bankOption, form.bankType === b && s.bankOptionOn]}
+                 style={[s.bankOption, form.bankType===b && s.bankOptionOn]}
                  onPress={() => { set('bankType', b); setBankModal(false); }}>
-                 <Text style={[s.bankOptionT, form.bankType === b && s.bankOptionTOn]}>{b}</Text>
-                 {form.bankType === b && <Text style={{color:'#c9a84c', fontSize:18}}>✓</Text>}
+                 <Text style={[s.bankOptionT, form.bankType===b && s.bankOptionTOn]}>{b}</Text>
+                 {form.bankType===b && <Text style={{color:'#c9a84c', fontSize:18}}>✓</Text>}
                </TouchableOpacity>
              ))}
            </ScrollView>
@@ -598,7 +599,7 @@ export default function HomeScreen({ subDays, navigation }) {
      </Modal>
 
      {/* Form Modal */}
-     <Modal visible={modal === 'form'} animationType="slide">
+     <Modal visible={modal==='form'} animationType="slide">
        <View style={s.modalWrap}>
          <View style={s.modalHead}>
            <TouchableOpacity onPress={handleCancel}>
@@ -621,16 +622,15 @@ export default function HomeScreen({ subDays, navigation }) {
              <TouchableOpacity
                style={[s.input, {justifyContent:'space-between', flexDirection:'row', alignItems:'center', paddingVertical:14}]}
                onPress={() => setBankModal(true)}>
-               <Text style={{color: form.bankType ? '#f8f6f0' : '#8a9ab5', fontSize:15}}>
-                 {form.bankType || 'اختر المصرف'}
+               <Text style={{color:form.bankType?'#f8f6f0':'#8a9ab5', fontSize:15}}>
+                 {form.bankType || 'اختر المصرف ▼'}
                </Text>
                <Text style={{color:'#8a9ab5'}}>▼</Text>
              </TouchableOpacity>
              {form.bankType === 'أخرى' && (
                <TextInput style={[s.input, {marginTop:8}]}
                  placeholder="اكتب اسم المصرف" placeholderTextColor="#8a9ab5"
-                 value={form.bankTypeOther || ''}
-                 onChangeText={v => set('bankTypeOther', v)} />
+                 value={form.bankTypeOther||''} onChangeText={v => set('bankTypeOther', v)} />
              )}
            </View>
 
@@ -662,21 +662,21 @@ export default function HomeScreen({ subDays, navigation }) {
              <Text style={s.label}>جواز السفر</Text>
              <TextInput style={s.input}
                placeholder="اختياري" placeholderTextColor="#8a9ab5"
-               value={form.passportId || ''} onChangeText={v => set('passportId', v)} />
+               value={form.passportId||''} onChangeText={v => set('passportId', v)} />
            </View>
 
            <View style={s.fg}>
              <Text style={s.label}>رقم الحساب</Text>
              <TextInput style={s.input}
                placeholder="اختياري" placeholderTextColor="#8a9ab5"
-               value={form.accountNumber || ''} onChangeText={v => set('accountNumber', v)} />
+               value={form.accountNumber||''} onChangeText={v => set('accountNumber', v)} />
            </View>
 
            <View style={s.fg}>
              <Text style={s.label}>رقم IBAN</Text>
              <TextInput style={s.input}
                placeholder="اختياري" placeholderTextColor="#8a9ab5"
-               value={form.iban || ''} onChangeText={v => set('iban', v.toUpperCase())}
+               value={form.iban||''} onChangeText={v => set('iban', v.toUpperCase())}
                autoCapitalize="characters" />
            </View>
 
@@ -692,9 +692,9 @@ export default function HomeScreen({ subDays, navigation }) {
              <Text style={s.label}>العملة</Text>
              <View style={{flexDirection:'row', gap:8}}>
                {['د.ل','USD'].map(c => (
-                 <TouchableOpacity key={c} style={[s.chip, form.currency === c && s.chipOn]}
+                 <TouchableOpacity key={c} style={[s.chip, form.currency===c && s.chipOn]}
                    onPress={() => set('currency', c)}>
-                   <Text style={[s.chipT, form.currency === c && s.chipTOn]}>{c}</Text>
+                   <Text style={[s.chipT, form.currency===c && s.chipTOn]}>{c}</Text>
                  </TouchableOpacity>
                ))}
              </View>
@@ -711,9 +711,9 @@ export default function HomeScreen({ subDays, navigation }) {
              <Text style={s.label}>نوع الحجز</Text>
              <View style={{flexDirection:'row', gap:8}}>
                {['كاش','حوالة','بطاقة'].map(t => (
-                 <TouchableOpacity key={t} style={[s.chip, form.paymentType === t && s.chipOn]}
+                 <TouchableOpacity key={t} style={[s.chip, form.paymentType===t && s.chipOn]}
                    onPress={() => set('paymentType', t)}>
-                   <Text style={[s.chipT, form.paymentType === t && s.chipTOn]}>{t}</Text>
+                   <Text style={[s.chipT, form.paymentType===t && s.chipTOn]}>{t}</Text>
                  </TouchableOpacity>
                ))}
              </View>
@@ -735,12 +735,12 @@ export default function HomeScreen({ subDays, navigation }) {
            </View>
 
            <TouchableOpacity style={s.chk} onPress={() => set('cardBooked', !form.cardBooked)}>
-             <Text style={s.chkBox}>{form.cardBooked ? '✅' : '⬜'}</Text>
+             <Text style={s.chkBox}>{form.cardBooked?'✅':'⬜'}</Text>
              <Text style={s.chkL}>تم حجز البطاقة</Text>
            </TouchableOpacity>
 
            <TouchableOpacity style={s.chk} onPress={() => set('isSold', !form.isSold)}>
-             <Text style={s.chkBox}>{form.isSold ? '✅' : '⬜'}</Text>
+             <Text style={s.chkBox}>{form.isSold?'✅':'⬜'}</Text>
              <Text style={s.chkL}>تم بيع البطاقة</Text>
            </TouchableOpacity>
 
@@ -749,7 +749,7 @@ export default function HomeScreen({ subDays, navigation }) {
                <Text style={s.label}>بيعت إلى</Text>
                <TextInput style={s.input}
                  placeholder="اسم المشتري" placeholderTextColor="#8a9ab5"
-                 value={form.soldTo || ''} onChangeText={v => set('soldTo', v)} />
+                 value={form.soldTo||''} onChangeText={v => set('soldTo', v)} />
              </View>
            )}
 
@@ -769,7 +769,7 @@ export default function HomeScreen({ subDays, navigation }) {
              <Text style={s.cancelT}>إلغاء</Text>
            </TouchableOpacity>
            <TouchableOpacity style={s.saveBtn} onPress={handleSave} disabled={saving}>
-             {saving ? <ActivityIndicator color="#0a1628" /> : <Text style={s.saveT}>💾 حفظ</Text>}
+             {saving?<ActivityIndicator color="#0a1628"/>:<Text style={s.saveT}>💾 حفظ</Text>}
            </TouchableOpacity>
          </View>
        </View>
