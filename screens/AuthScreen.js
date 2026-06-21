@@ -7,12 +7,14 @@ import {
 import {
  signInWithEmailAndPassword,
  createUserWithEmailAndPassword,
- sendPasswordResetEmail
+ sendPasswordResetEmail,
+ updateProfile
 } from 'firebase/auth';
 import { auth } from '../firebase';
 
 export default function AuthScreen() {
  const [tab, setTab] = useState('login');
+ const [name, setName] = useState('');
  const [email, setEmail] = useState('');
  const [pass, setPass] = useState('');
  const [err, setErr] = useState('');
@@ -22,12 +24,24 @@ export default function AuthScreen() {
 
  const handle = async () => {
    setErr(''); setOk(''); setLoad(true);
-   if (!email.trim() || !pass.trim()) {
-     setErr('يرجى ملء جميع الحقول'); setLoad(false); return;
+
+   if (tab === 'register') {
+     if (!name.trim() || !email.trim() || !pass.trim()) {
+       setErr('يرجى ملء جميع الحقول'); setLoad(false); return;
+     }
+   } else {
+     if (!email.trim() || !pass.trim()) {
+       setErr('يرجى ملء جميع الحقول'); setLoad(false); return;
+     }
    }
+
    try {
-     if (tab === 'login') await signInWithEmailAndPassword(auth, email.trim(), pass);
-     else await createUserWithEmailAndPassword(auth, email.trim(), pass);
+     if (tab === 'login') {
+       await signInWithEmailAndPassword(auth, email.trim(), pass);
+     } else {
+       const cred = await createUserWithEmailAndPassword(auth, email.trim(), pass);
+       await updateProfile(cred.user, { displayName: name.trim() });
+     }
    } catch (e) {
      const m = {
        'auth/invalid-credential': 'البريد أو كلمة المرور غير صحيحة',
@@ -73,6 +87,15 @@ export default function AuthScreen() {
 
            {!!err && <View style={s.errBox}><Text style={s.errT}>{err}</Text></View>}
            {!!ok  && <View style={s.okBox}><Text style={s.okT}>{ok}</Text></View>}
+
+           {tab === 'register' && (
+             <>
+               <Text style={s.label}>الاسم الكامل</Text>
+               <TextInput style={s.input}
+                 placeholder="اسمك الكامل" placeholderTextColor="#8a9ab5"
+                 value={name} onChangeText={setName} />
+             </>
+           )}
 
            <Text style={s.label}>البريد الإلكتروني</Text>
            <TextInput style={s.input}
