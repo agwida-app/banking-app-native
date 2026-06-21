@@ -8,6 +8,7 @@ import { View, Text, ActivityIndicator, TouchableOpacity, StyleSheet } from 'rea
 import { auth, db } from './firebase';
 import { collection, query, where, onSnapshot, doc, updateDoc } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
+import { ThemeProvider, useTheme } from './ThemeContext';
 
 import AuthScreen from './screens/AuthScreen';
 import HomeScreen from './screens/HomeScreen';
@@ -28,7 +29,8 @@ function getDeviceType() {
   return Platform.OS === 'ios' ? 'iPhone 📱' : 'Android 📱';
 }
 
-export default function App() {
+function AppInner() {
+  const { colors, isDark } = useTheme();
   const [user, setUser] = useState(null);
   const [ready, setReady] = useState(false);
   const [subStatus, setSubStatus] = useState(null);
@@ -94,19 +96,19 @@ export default function App() {
   }, [user]);
 
   if (!ready || (user && subStatus === null)) return (
-    <View style={st.loading}>
-      <ActivityIndicator size="large" color="#c9a84c" />
+    <View style={[st.loading, { backgroundColor: colors.bg }]}>
+      <ActivityIndicator size="large" color={colors.gold} />
     </View>
   );
 
   if (user && subStatus === 'device_limit') return (
-    <View style={st.loading}>
-      <StatusBar style="light" />
+    <View style={[st.loading, { backgroundColor: colors.bg }]}>
+      <StatusBar style={isDark ? "light" : "dark"} />
       <Text style={st.limitIcon}>📱📱📱</Text>
-      <Text style={st.limitTitle}>تجاوزت الحد الأقصى للأجهزة</Text>
-      <Text style={st.limitSub}>اشتراكك مسجّل على 7 أجهزة وهو الحد الأقصى.{'\n'}تواصل مع المسؤول لإعادة ضبط أجهزتك.</Text>
-      <TouchableOpacity style={st.limitBtn} onPress={() => signOut(auth)}>
-        <Text style={st.limitBtnT}>تسجيل خروج</Text>
+      <Text style={[st.limitTitle, { color: colors.text }]}>تجاوزت الحد الأقصى للأجهزة</Text>
+      <Text style={[st.limitSub, { color: colors.textMuted }]}>اشتراكك مسجّل على 7 أجهزة وهو الحد الأقصى.{'\n'}تواصل مع المسؤول لإعادة ضبط أجهزتك.</Text>
+      <TouchableOpacity style={[st.limitBtn, { backgroundColor: colors.gold }]} onPress={() => signOut(auth)}>
+        <Text style={[st.limitBtnT, { color: colors.bg }]}>تسجيل خروج</Text>
       </TouchableOpacity>
     </View>
   );
@@ -114,7 +116,7 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <NavigationContainer>
-        <StatusBar style="light" />
+        <StatusBar style={isDark ? "light" : "dark"} />
         <Stack.Navigator screenOptions={{ headerShown: false }}>
           {!user ? (
             <Stack.Screen name="Auth" component={AuthScreen} />
@@ -138,11 +140,19 @@ export default function App() {
   );
 }
 
+export default function App() {
+  return (
+    <ThemeProvider>
+      <AppInner />
+    </ThemeProvider>
+  );
+}
+
 const st = StyleSheet.create({
-  loading:    { flex:1, backgroundColor:'#0a1628', alignItems:'center', justifyContent:'center', padding:24 },
+  loading:    { flex:1, alignItems:'center', justifyContent:'center', padding:24 },
   limitIcon:  { fontSize:50, marginBottom:16 },
-  limitTitle: { fontSize:20, fontWeight:'900', color:'#f8f6f0', marginBottom:10, textAlign:'center' },
-  limitSub:   { fontSize:14, color:'#8a9ab5', textAlign:'center', lineHeight:22, marginBottom:24 },
-  limitBtn:   { backgroundColor:'#c9a84c', borderRadius:12, paddingHorizontal:32, paddingVertical:14 },
-  limitBtnT:  { color:'#0a1628', fontSize:15, fontWeight:'700' },
+  limitTitle: { fontSize:20, fontWeight:'900', marginBottom:10, textAlign:'center' },
+  limitSub:   { fontSize:14, textAlign:'center', lineHeight:22, marginBottom:24 },
+  limitBtn:   { borderRadius:12, paddingHorizontal:32, paddingVertical:14 },
+  limitBtnT:  { fontSize:15, fontWeight:'700' },
 });
