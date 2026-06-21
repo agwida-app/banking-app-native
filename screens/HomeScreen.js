@@ -197,6 +197,8 @@ export default function HomeScreen({ subDays, navigation }) {
  const [sortBy, setSortBy] = useState('newest');
  const [showFilters, setShowFilters] = useState(false);
  const [bankModal, setBankModal] = useState(false);
+ const [noteEdits, setNoteEdits] = useState({});
+ const [noteSaving, setNoteSaving] = useState({});
  const user = auth.currentUser;
  const ADMIN_UID = "yel5HGeqTfXRUmraIzfZK4XVhrS2";
  const isAdmin = user?.uid === ADMIN_UID;
@@ -302,6 +304,32 @@ export default function HomeScreen({ subDays, navigation }) {
  };
 
  const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
+
+ const getNoteValue = (c) => noteEdits[c.id] !== undefined ? noteEdits[c.id] : (c.notes || '');
+ const isNoteChanged = (c) => noteEdits[c.id] !== undefined && noteEdits[c.id] !== (c.notes || '');
+
+ const handleNoteChange = (clientId, text) => {
+   setNoteEdits(prev => ({ ...prev, [clientId]: text }));
+ };
+
+ const handleSaveNote = async (c) => {
+   const newNote = noteEdits[c.id];
+   if (newNote === undefined) return;
+   setNoteSaving(prev => ({ ...prev, [c.id]: true }));
+   try {
+     await updateDoc(doc(db, 'clients', c.id), {
+       notes: newNote, updatedBy: user.email, updatedAt: serverTimestamp()
+     });
+     setNoteEdits(prev => {
+       const copy = { ...prev };
+       delete copy[c.id];
+       return copy;
+     });
+   } catch (e) {
+     Alert.alert('خطأ', 'تعذر حفظ الملاحظة: ' + e.message);
+   }
+   setNoteSaving(prev => ({ ...prev, [c.id]: false }));
+ };
 
  const viewRows = sel ? [
    { l:'الاسم الكامل', v:sel.name, canCopy:false },
@@ -490,19 +518,46 @@ export default function HomeScreen({ subDays, navigation }) {
                  </View>
                }
                renderItem={({ item: c }) => (
-                 <TouchableOpacity style={[s.card, c.isSold && s.soldCard]} onPress={() => openView(c)}>
-                   <View style={s.cardTop}>
-                     <Text style={s.name}>{c.name}</Text>
-                     {c.isSold
-                       ? <View style={[s.badge, s.badgeSold]}><Text style={s.badgeT}>🔴 مباع</Text></View>
-                       : c.cardBooked
-                       ? <View style={[s.badge, s.badgeOk]}><Text style={s.badgeT}>✅ تم</Text></View>
-                       : <View style={[s.badge, s.badgeWarn]}><Text style={s.badgeT}>⏳ انتظار</Text></View>
-                     }
+                 <View style={[s.card, c.isSold && s.soldCard]}>
+                   <TouchableOpacity onPress={() => openView(c)}>
+                     <View style={s.cardTop}>
+                       <Text style={s.name}>{c.name}</Text>
+                       {c.isSold
+                         ? <View style={[s.badge, s.badgeSold]}><Text style={s.badgeT}>🔴 مباع</Text></View>
+                         : c.cardBooked
+                         ? <View style={[s.badge, s.badgeOk]}><Text style={s.badgeT}>✅ تم</Text></View>
+                         : <View style={[s.badge, s.badgeWarn]}><Text style={s.badgeT}>⏳ انتظار</Text></View>
+                       }
+                     </View>
+                     <Text style={s.bank}>{c.bankType==='أخرى'?c.bankTypeOther:c.bankType}</Text>
+                     <Text style={s.phone}>{c.phone1}</Text>
+                     {c.amount?<Text style={s.amount}>{parseFloat(c.amount).toLocaleString('en')} {c.currency}</Text>:null}
+                   </TouchableOpacity>
+
+                   {/* ملاحظات قابلة للتعديل المباشر */}
+                   <View style={s.noteBox}>
+                     <Text style={s.noteLabel}>📝 ملاحظات</Text>
+                     <TextInput
+                       style={s.noteInput}
+                       placeholder="أضف ملاحظة..."
+                       placeholderTextColor="#5a6b87"
+                       value={getNoteValue(c)}
+                       onChangeText={(t) => handleNoteChange(c.id, t)}
+                       multiline
+                       textAlignVertical="top"
+                     />
+                     {isNoteChanged(c) && (
+                       <TouchableOpacity
+                         style={s.noteSaveBtn}
+                         onPress={() => handleSaveNote(c)}
+                         disabled={!!noteSaving[c.id]}>
+                         {noteSaving[c.id]
+                           ? <ActivityIndicator color="#0a1628" size="small" />
+                           : <Text style={s.noteSaveBtnT}>💾 حفظ الملاحظة</Text>}
+                       </TouchableOpacity>
+                     )}
                    </View>
-                   <Text style={s.bank}>{c.bankType==='أخرى'?c.bankTypeOther:c.bankType}</Text>
-                   <Text style={s.phone}>{c.phone1}</Text>
-                   {c.amount?<Text style={s.amount}>{parseFloat(c.amount).toLocaleString('en')} {c.currency}</Text>:null}
+
                    <View style={s.actions}>
                      <TouchableOpacity style={s.editBtn} onPress={() => openEdit(c)}>
                        <Text style={s.editT}>✏️ تعديل</Text>
@@ -514,7 +569,7 @@ export default function HomeScreen({ subDays, navigation }) {
                        <Text style={s.delT}>🗑 حذف</Text>
                      </TouchableOpacity>
                    </View>
-                 </TouchableOpacity>
+                 </View>
                )}
              />
          }
@@ -821,6 +876,11 @@ const s = StyleSheet.create({
  bank:             { fontSize:12, color:'#8a9ab5', marginBottom:2 },
  phone:            { fontSize:12, color:'#c5cedd', marginBottom:2 },
  amount:           { fontSize:13, color:'#c9a84c', fontWeight:'700', marginBottom:8 },
+ noteBox:          { marginTop:8, marginBottom:8, backgroundColor:'rgba(255,255,255,0.04)', borderRadius:10, padding:10, borderWidth:1, borderColor:'rgba(255,255,255,0.08)' },
+ noteLabel:        { fontSize:11, color:'#8a9ab5', marginBottom:6, fontWeight:'600' },
+ noteInput:        { color:'#f8f6f0', fontSize:13, minHeight:36, textAlign:'right', padding:0 },
+ noteSaveBtn:      { backgroundColor:'#c9a84c', borderRadius:8, paddingVertical:8, alignItems:'center', marginTop:8 },
+ noteSaveBtnT:     { color:'#0a1628', fontSize:12, fontWeight:'700' },
  actions:          { flexDirection:'row', gap:8, marginTop:6 },
  editBtn:          { backgroundColor:'rgba(201,168,76,0.1)', borderRadius:8, paddingHorizontal:12, paddingVertical:6, borderWidth:1, borderColor:'rgba(201,168,76,0.3)' },
  editT:            { color:'#c9a84c', fontSize:12, fontWeight:'600' },
