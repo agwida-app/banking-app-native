@@ -12,6 +12,7 @@ import {
  addDoc, updateDoc, deleteDoc, doc, serverTimestamp
 } from 'firebase/firestore';
 import { auth, db } from '../firebase';
+import { useTheme } from '../ThemeContext';
 
 const BANKS = ["التجاري الوطني","الجمهورية","الأمان","الوحدة","شمال أفريقيا","التجارة والتنمية","المتوسط","الاتحاد","أخرى"];
 
@@ -184,6 +185,7 @@ async function exportCSV(clients) {
 }
 
 export default function HomeScreen({ subDays, navigation }) {
+ const { colors, isDark, toggleTheme } = useTheme();
  const [clients, setClients] = useState([]);
  const [search, setSearch] = useState('');
  const [loading, setLoading] = useState(true);
@@ -361,14 +363,17 @@ export default function HomeScreen({ subDays, navigation }) {
  ];
 
  return (
-   <View style={s.wrap}>
+   <View style={[s.wrap, { backgroundColor: colors.bg }]}>
      {/* Header */}
-     <View style={s.header}>
+     <View style={[s.header, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
        <TouchableOpacity onPress={() => signOut(auth)}>
-         <Text style={s.logout}>خروج</Text>
+         <Text style={[s.logout, { color: colors.textMuted }]}>خروج</Text>
        </TouchableOpacity>
-       <Text style={s.title}>💳 إدارة بطاقاتك</Text>
+       <Text style={[s.title, { color: colors.gold }]}>💳 إدارة بطاقاتك</Text>
        <View style={{flexDirection:'row', gap:10, alignItems:'center'}}>
+         <TouchableOpacity onPress={toggleTheme}>
+           <Text style={s.themeIcon}>{isDark ? '☀️' : '🌙'}</Text>
+         </TouchableOpacity>
          {isAdmin && (
            <TouchableOpacity onPress={() => navigation.navigate('Admin')}>
              <Text style={s.adminBtn}>🛡️</Text>
@@ -376,7 +381,7 @@ export default function HomeScreen({ subDays, navigation }) {
          )}
          {tab === 'clients' && (
            <TouchableOpacity onPress={openAdd}>
-             <Text style={s.addH}>＋</Text>
+             <Text style={[s.addH, { color: colors.gold }]}>＋</Text>
            </TouchableOpacity>
          )}
        </View>
@@ -390,12 +395,12 @@ export default function HomeScreen({ subDays, navigation }) {
      )}
 
      {/* Tabs */}
-     <View style={s.tabs}>
-       <TouchableOpacity style={[s.tab, tab==='clients' && s.tabOn]} onPress={() => setTab('clients')}>
-         <Text style={[s.tabT, tab==='clients' && s.tabTOn]}>👥 العملاء</Text>
+     <View style={[s.tabs, { backgroundColor: colors.overlay }]}>
+       <TouchableOpacity style={[s.tab, tab==='clients' && { backgroundColor: colors.gold }]} onPress={() => setTab('clients')}>
+         <Text style={[s.tabT, { color: colors.textMuted }, tab==='clients' && { color: colors.bg, fontWeight:'700' }]}>👥 العملاء</Text>
        </TouchableOpacity>
-       <TouchableOpacity style={[s.tab, tab==='stats' && s.tabOn]} onPress={() => setTab('stats')}>
-         <Text style={[s.tabT, tab==='stats' && s.tabTOn]}>📊 الإحصائيات</Text>
+       <TouchableOpacity style={[s.tab, tab==='stats' && { backgroundColor: colors.gold }]} onPress={() => setTab('stats')}>
+         <Text style={[s.tabT, { color: colors.textMuted }, tab==='stats' && { color: colors.bg, fontWeight:'700' }]}>📊 الإحصائيات</Text>
        </TouchableOpacity>
      </View>
 
@@ -404,17 +409,17 @@ export default function HomeScreen({ subDays, navigation }) {
        <ScrollView style={{flex:1}} contentContainerStyle={{padding:14}}>
          <View style={s.statsGrid}>
            {[
-             { i:'👥', v:total, l:'إجمالي العملاء', c:'#c9a84c' },
+             { i:'👥', v:total, l:'إجمالي العملاء', c:colors.gold },
              { i:'✅', v:booked, l:'تم حجز البطاقة', c:'#2ecc71' },
              { i:'⏳', v:pending, l:'لم يتم الحجز', c:'#f39c12' },
              { i:'🔴', v:sold, l:'تم البيع', c:'#e74c3c' },
-             { i:'💰', v:`${totalAmt.toLocaleString('en')} د.ل`, l:'إجمالي المبالغ', c:'#c9a84c' },
+             { i:'💰', v:`${totalAmt.toLocaleString('en')} د.ل`, l:'إجمالي المبالغ', c:colors.gold },
              { i:'📊', v:total?`${Math.round(booked/total*100)}%`:'0%', l:'نسبة الحجز', c:'#2ecc71' },
            ].map((item, i) => (
-             <View key={i} style={s.statCard}>
+             <View key={i} style={[s.statCard, { backgroundColor: colors.card, borderColor: colors.borderSoft }]}>
                <Text style={s.statI}>{item.i}</Text>
                <Text style={[s.statV, {color:item.c}]}>{item.v}</Text>
-               <Text style={s.statL}>{item.l}</Text>
+               <Text style={[s.statL, { color: colors.textMuted }]}>{item.l}</Text>
              </View>
            ))}
          </View>
@@ -429,27 +434,27 @@ export default function HomeScreen({ subDays, navigation }) {
      {tab === 'clients' && (
        <>
          <View style={s.exportRow}>
-           <TouchableOpacity style={s.exportBtn} onPress={() => exportPDF(filtered)}>
-             <Text style={s.exportT}>📄 تصدير PDF</Text>
+           <TouchableOpacity style={[s.exportBtn, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder }]} onPress={() => exportPDF(filtered)}>
+             <Text style={[s.exportT, { color: colors.gold }]}>📄 تصدير PDF</Text>
            </TouchableOpacity>
-           <TouchableOpacity style={s.exportBtn} onPress={() => exportCSV(clients)}>
-             <Text style={s.exportT}>📊 تصدير CSV</Text>
+           <TouchableOpacity style={[s.exportBtn, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder }]} onPress={() => exportCSV(clients)}>
+             <Text style={[s.exportT, { color: colors.gold }]}>📊 تصدير CSV</Text>
            </TouchableOpacity>
          </View>
 
          <View style={s.searchRow}>
-           <TextInput style={[s.search, {flex:1}]}
+           <TextInput style={[s.search, { flex:1, backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.text }]}
              placeholder="🔍 بحث بالاسم، الجوال، الرقم الوطني..."
-             placeholderTextColor="#8a9ab5"
+             placeholderTextColor={colors.textMuted}
              value={search} onChangeText={setSearch} />
-           <TouchableOpacity style={s.filterBtn} onPress={() => setShowFilters(!showFilters)}>
+           <TouchableOpacity style={[s.filterBtn, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder }]} onPress={() => setShowFilters(!showFilters)}>
              <Text style={s.filterBtnT}>⚙️</Text>
            </TouchableOpacity>
          </View>
 
          {showFilters && (
-           <View style={s.filtersBox}>
-             <Text style={s.filterLabel}>الفرز:</Text>
+           <View style={[s.filtersBox, { backgroundColor: colors.card, borderColor: colors.borderSoft }]}>
+             <Text style={[s.filterLabel, { color: colors.textMuted }]}>الفرز:</Text>
              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                {[
                  {v:'newest', l:'📅 الأحدث'},
@@ -458,14 +463,14 @@ export default function HomeScreen({ subDays, navigation }) {
                  {v:'booking_desc', l:'📅 حجز ↓'},
                ].map(item => (
                  <TouchableOpacity key={item.v}
-                   style={[s.fChip, sortBy===item.v && s.fChipOn]}
+                   style={[s.fChip, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder }, sortBy===item.v && { borderColor: colors.gold, backgroundColor: colors.goldSoft }]}
                    onPress={() => setSortBy(item.v)}>
-                   <Text style={[s.fChipT, sortBy===item.v && s.fChipTOn]}>{item.l}</Text>
+                   <Text style={[s.fChipT, { color: colors.textMuted }, sortBy===item.v && { color: colors.gold, fontWeight:'700' }]}>{item.l}</Text>
                  </TouchableOpacity>
                ))}
              </ScrollView>
 
-             <Text style={[s.filterLabel, {marginTop:8}]}>الحالة:</Text>
+             <Text style={[s.filterLabel, { color: colors.textMuted, marginTop:8 }]}>الحالة:</Text>
              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                {[
                  {v:'all', l:`الكل (${total})`},
@@ -474,27 +479,27 @@ export default function HomeScreen({ subDays, navigation }) {
                  {v:'sold', l:`🔴 مباع (${sold})`},
                ].map(item => (
                  <TouchableOpacity key={item.v}
-                   style={[s.fChip, filterStatus===item.v && s.fChipOn]}
+                   style={[s.fChip, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder }, filterStatus===item.v && { borderColor: colors.gold, backgroundColor: colors.goldSoft }]}
                    onPress={() => setFilterStatus(item.v)}>
-                   <Text style={[s.fChipT, filterStatus===item.v && s.fChipTOn]}>{item.l}</Text>
+                   <Text style={[s.fChipT, { color: colors.textMuted }, filterStatus===item.v && { color: colors.gold, fontWeight:'700' }]}>{item.l}</Text>
                  </TouchableOpacity>
                ))}
              </ScrollView>
 
              {bankNames.length > 0 && (
                <>
-                 <Text style={[s.filterLabel, {marginTop:8}]}>المصرف:</Text>
+                 <Text style={[s.filterLabel, { color: colors.textMuted, marginTop:8 }]}>المصرف:</Text>
                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                    <TouchableOpacity
-                     style={[s.fChip, filterBank==='all' && s.fChipOn]}
+                     style={[s.fChip, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder }, filterBank==='all' && { borderColor: colors.gold, backgroundColor: colors.goldSoft }]}
                      onPress={() => setFilterBank('all')}>
-                     <Text style={[s.fChipT, filterBank==='all' && s.fChipTOn]}>الكل</Text>
+                     <Text style={[s.fChipT, { color: colors.textMuted }, filterBank==='all' && { color: colors.gold, fontWeight:'700' }]}>الكل</Text>
                    </TouchableOpacity>
                    {bankNames.map(b => (
                      <TouchableOpacity key={b}
-                       style={[s.fChip, filterBank===b && s.fChipOn]}
+                       style={[s.fChip, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder }, filterBank===b && { borderColor: colors.gold, backgroundColor: colors.goldSoft }]}
                        onPress={() => setFilterBank(b)}>
-                       <Text style={[s.fChipT, filterBank===b && s.fChipTOn]}>{b}</Text>
+                       <Text style={[s.fChipT, { color: colors.textMuted }, filterBank===b && { color: colors.gold, fontWeight:'700' }]}>{b}</Text>
                      </TouchableOpacity>
                    ))}
                  </ScrollView>
@@ -503,10 +508,10 @@ export default function HomeScreen({ subDays, navigation }) {
            </View>
          )}
 
-         <Text style={s.resultCount}>{filtered.length} عميل</Text>
+         <Text style={[s.resultCount, { color: colors.textMuted }]}>{filtered.length} عميل</Text>
 
          {loading
-           ? <ActivityIndicator color="#c9a84c" style={{marginTop:40}} />
+           ? <ActivityIndicator color={colors.gold} style={{marginTop:40}} />
            : <FlatList
                data={filtered}
                keyExtractor={c => c.id}
@@ -514,14 +519,14 @@ export default function HomeScreen({ subDays, navigation }) {
                ListEmptyComponent={
                  <View style={s.empty}>
                    <Text style={s.emptyI}>📋</Text>
-                   <Text style={s.emptyT}>{!clients.length ? 'اضغط + لإضافة أول عميل' : 'لا توجد نتائج'}</Text>
+                   <Text style={[s.emptyT, { color: colors.textMuted }]}>{!clients.length ? 'اضغط + لإضافة أول عميل' : 'لا توجد نتائج'}</Text>
                  </View>
                }
                renderItem={({ item: c }) => (
-                 <View style={[s.card, c.isSold && s.soldCard]}>
+                 <View style={[s.card, { backgroundColor: colors.card, borderColor: colors.borderSoft }, c.isSold && s.soldCard]}>
                    <TouchableOpacity onPress={() => openView(c)}>
                      <View style={s.cardTop}>
-                       <Text style={s.name}>{c.name}</Text>
+                       <Text style={[s.name, { color: colors.text }]}>{c.name}</Text>
                        {c.isSold
                          ? <View style={[s.badge, s.badgeSold]}><Text style={s.badgeT}>🔴 مباع</Text></View>
                          : c.cardBooked
@@ -529,18 +534,18 @@ export default function HomeScreen({ subDays, navigation }) {
                          : <View style={[s.badge, s.badgeWarn]}><Text style={s.badgeT}>⏳ انتظار</Text></View>
                        }
                      </View>
-                     <Text style={s.bank}>{c.bankType==='أخرى'?c.bankTypeOther:c.bankType}</Text>
-                     <Text style={s.phone}>{c.phone1}</Text>
-                     {c.amount?<Text style={s.amount}>{parseFloat(c.amount).toLocaleString('en')} {c.currency}</Text>:null}
+                     <Text style={[s.bank, { color: colors.textMuted }]}>{c.bankType==='أخرى'?c.bankTypeOther:c.bankType}</Text>
+                     <Text style={[s.phone, { color: colors.textSoft }]}>{c.phone1}</Text>
+                     {c.amount?<Text style={[s.amount, { color: colors.gold }]}>{parseFloat(c.amount).toLocaleString('en')} {c.currency}</Text>:null}
                    </TouchableOpacity>
 
                    {/* ملاحظات قابلة للتعديل المباشر */}
-                   <View style={s.noteBox}>
-                     <Text style={s.noteLabel}>📝 ملاحظات</Text>
+                   <View style={[s.noteBox, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder }]}>
+                     <Text style={[s.noteLabel, { color: colors.textMuted }]}>📝 ملاحظات</Text>
                      <TextInput
-                       style={s.noteInput}
+                       style={[s.noteInput, { color: colors.text }]}
                        placeholder="أضف ملاحظة..."
-                       placeholderTextColor="#5a6b87"
+                       placeholderTextColor={colors.textMuted}
                        value={getNoteValue(c)}
                        onChangeText={(t) => handleNoteChange(c.id, t)}
                        multiline
@@ -548,19 +553,19 @@ export default function HomeScreen({ subDays, navigation }) {
                      />
                      {isNoteChanged(c) && (
                        <TouchableOpacity
-                         style={s.noteSaveBtn}
+                         style={[s.noteSaveBtn, { backgroundColor: colors.gold }]}
                          onPress={() => handleSaveNote(c)}
                          disabled={!!noteSaving[c.id]}>
                          {noteSaving[c.id]
-                           ? <ActivityIndicator color="#0a1628" size="small" />
-                           : <Text style={s.noteSaveBtnT}>💾 حفظ الملاحظة</Text>}
+                           ? <ActivityIndicator color={colors.bg} size="small" />
+                           : <Text style={[s.noteSaveBtnT, { color: colors.bg }]}>💾 حفظ الملاحظة</Text>}
                        </TouchableOpacity>
                      )}
                    </View>
 
                    <View style={s.actions}>
-                     <TouchableOpacity style={s.editBtn} onPress={() => openEdit(c)}>
-                       <Text style={s.editT}>✏️ تعديل</Text>
+                     <TouchableOpacity style={[s.editBtn, { backgroundColor: colors.goldSoft, borderColor: colors.borderSoft }]} onPress={() => openEdit(c)}>
+                       <Text style={[s.editT, { color: colors.gold }]}>✏️ تعديل</Text>
                      </TouchableOpacity>
                      <TouchableOpacity style={s.pdfBtn} onPress={() => exportPDF(clients, c)}>
                        <Text style={s.pdfT}>📄 PDF</Text>
@@ -574,35 +579,35 @@ export default function HomeScreen({ subDays, navigation }) {
              />
          }
 
-         <TouchableOpacity style={s.fab} onPress={openAdd}>
-           <Text style={s.fabT}>＋</Text>
+         <TouchableOpacity style={[s.fab, { backgroundColor: colors.gold }]} onPress={openAdd}>
+           <Text style={[s.fabT, { color: colors.bg }]}>＋</Text>
          </TouchableOpacity>
        </>
      )}
 
      {/* View Modal */}
      <Modal visible={modal==='view'} animationType="slide">
-       <View style={s.modalWrap}>
-         <View style={s.modalHead}>
+       <View style={[s.modalWrap, { backgroundColor: colors.bg }]}>
+         <View style={[s.modalHead, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
            <TouchableOpacity onPress={() => setModal(null)}>
-             <Text style={s.modalClose}>✕</Text>
+             <Text style={[s.modalClose, { color: colors.textMuted }]}>✕</Text>
            </TouchableOpacity>
-           <Text style={s.modalTitle}>👤 {sel?.name}</Text>
+           <Text style={[s.modalTitle, { color: colors.gold }]}>👤 {sel?.name}</Text>
            <TouchableOpacity onPress={() => { setModal(null); setTimeout(() => openEdit(sel), 300); }}>
-             <Text style={s.editH}>✏️</Text>
+             <Text style={[s.editH, { color: colors.gold }]}>✏️</Text>
            </TouchableOpacity>
          </View>
          <ScrollView style={{flex:1}}>
            {sections.map(section => (
-             <View key={section.title} style={s.viewSection}>
-               <Text style={s.viewSectionTitle}>{section.title}</Text>
+             <View key={section.title} style={[s.viewSection, { backgroundColor: colors.card, borderColor: colors.borderSoft }]}>
+               <Text style={[s.viewSectionTitle, { backgroundColor: colors.goldSoft, color: colors.gold, borderBottomColor: colors.borderSoft }]}>{section.title}</Text>
                {section.rows.map(({ l, v, canCopy }) => (
-                 <View key={l} style={s.viewRow}>
-                   <Text style={s.viewLabel}>{l}</Text>
+                 <View key={l} style={[s.viewRow, { borderBottomColor: colors.inputBg }]}>
+                   <Text style={[s.viewLabel, { color: colors.textMuted }]}>{l}</Text>
                    <View style={s.viewValWrap}>
-                     <Text style={s.viewVal} numberOfLines={2}>{v}</Text>
+                     <Text style={[s.viewVal, { color: colors.text }]} numberOfLines={2}>{v}</Text>
                      {canCopy && v !== '—' && (
-                       <TouchableOpacity onPress={() => copy(v, l)} style={s.copyBtn}>
+                       <TouchableOpacity onPress={() => copy(v, l)} style={[s.copyBtn, { backgroundColor: colors.goldSoft }]}>
                          <Text style={s.copyBtnT}>📋</Text>
                        </TouchableOpacity>
                      )}
@@ -613,9 +618,9 @@ export default function HomeScreen({ subDays, navigation }) {
            ))}
            <View style={{height:20}} />
          </ScrollView>
-         <View style={s.modalFoot}>
-           <TouchableOpacity style={s.cancelBtn} onPress={() => setModal(null)}>
-             <Text style={s.cancelT}>إغلاق</Text>
+         <View style={[s.modalFoot, { backgroundColor: colors.card, borderTopColor: colors.border }]}>
+           <TouchableOpacity style={[s.cancelBtn, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder }]} onPress={() => setModal(null)}>
+             <Text style={[s.cancelT, { color: colors.textMuted }]}>إغلاق</Text>
            </TouchableOpacity>
            <TouchableOpacity style={[s.saveBtn, {backgroundColor:'#1e40af', flex:1}]}
              onPress={() => exportPDF(clients, sel)}>
@@ -632,20 +637,20 @@ export default function HomeScreen({ subDays, navigation }) {
      {/* Bank Modal */}
      <Modal visible={bankModal} animationType="slide" transparent>
        <View style={s.bankModalOverlay}>
-         <View style={s.bankModalWrap}>
-           <View style={s.bankModalHead}>
-             <Text style={s.bankModalTitle}>🏦 اختر المصرف</Text>
+         <View style={[s.bankModalWrap, { backgroundColor: colors.card, borderColor: colors.border }]}>
+           <View style={[s.bankModalHead, { borderBottomColor: colors.inputBg }]}>
+             <Text style={[s.bankModalTitle, { color: colors.gold }]}>🏦 اختر المصرف</Text>
              <TouchableOpacity onPress={() => setBankModal(false)}>
-               <Text style={s.modalClose}>✕</Text>
+               <Text style={[s.modalClose, { color: colors.textMuted }]}>✕</Text>
              </TouchableOpacity>
            </View>
            <ScrollView>
              {BANKS.map(b => (
                <TouchableOpacity key={b}
-                 style={[s.bankOption, form.bankType===b && s.bankOptionOn]}
+                 style={[s.bankOption, { borderBottomColor: colors.inputBg }, form.bankType===b && { backgroundColor: colors.goldSoft }]}
                  onPress={() => { set('bankType', b); setBankModal(false); }}>
-                 <Text style={[s.bankOptionT, form.bankType===b && s.bankOptionTOn]}>{b}</Text>
-                 {form.bankType===b && <Text style={{color:'#c9a84c', fontSize:18}}>✓</Text>}
+                 <Text style={[s.bankOptionT, { color: colors.text }, form.bankType===b && { color: colors.gold, fontWeight:'700' }]}>{b}</Text>
+                 {form.bankType===b && <Text style={{color: colors.gold, fontSize:18}}>✓</Text>}
                </TouchableOpacity>
              ))}
            </ScrollView>
@@ -655,163 +660,163 @@ export default function HomeScreen({ subDays, navigation }) {
 
      {/* Form Modal */}
      <Modal visible={modal==='form'} animationType="slide">
-       <View style={s.modalWrap}>
-         <View style={s.modalHead}>
+       <View style={[s.modalWrap, { backgroundColor: colors.bg }]}>
+         <View style={[s.modalHead, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
            <TouchableOpacity onPress={handleCancel}>
-             <Text style={s.modalClose}>✕</Text>
+             <Text style={[s.modalClose, { color: colors.textMuted }]}>✕</Text>
            </TouchableOpacity>
-           <Text style={s.modalTitle}>{sel ? '✏️ تعديل عميل' : '➕ إضافة عميل'}</Text>
+           <Text style={[s.modalTitle, { color: colors.gold }]}>{sel ? '✏️ تعديل عميل' : '➕ إضافة عميل'}</Text>
            <View style={{width:30}} />
          </View>
          <ScrollView style={{padding:16}}>
 
            <View style={s.fg}>
-             <Text style={s.label}>الاسم الكامل *</Text>
-             <TextInput style={s.input}
-               placeholder="اسم العميل" placeholderTextColor="#8a9ab5"
+             <Text style={[s.label, { color: colors.textSoft }]}>الاسم الكامل *</Text>
+             <TextInput style={[s.input, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.text }]}
+               placeholder="اسم العميل" placeholderTextColor={colors.textMuted}
                value={form.name} onChangeText={v => set('name', v)} />
            </View>
 
            <View style={s.fg}>
-             <Text style={s.label}>المصرف *</Text>
+             <Text style={[s.label, { color: colors.textSoft }]}>المصرف *</Text>
              <TouchableOpacity
-               style={[s.input, {justifyContent:'space-between', flexDirection:'row', alignItems:'center', paddingVertical:14}]}
+               style={[s.input, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, justifyContent:'space-between', flexDirection:'row', alignItems:'center', paddingVertical:14}]}
                onPress={() => setBankModal(true)}>
-               <Text style={{color:form.bankType?'#f8f6f0':'#8a9ab5', fontSize:15}}>
+               <Text style={{color:form.bankType?colors.text:colors.textMuted, fontSize:15}}>
                  {form.bankType || 'اختر المصرف ▼'}
                </Text>
-               <Text style={{color:'#8a9ab5'}}>▼</Text>
+               <Text style={{color:colors.textMuted}}>▼</Text>
              </TouchableOpacity>
              {form.bankType === 'أخرى' && (
-               <TextInput style={[s.input, {marginTop:8}]}
-                 placeholder="اكتب اسم المصرف" placeholderTextColor="#8a9ab5"
+               <TextInput style={[s.input, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.text, marginTop:8}]}
+                 placeholder="اكتب اسم المصرف" placeholderTextColor={colors.textMuted}
                  value={form.bankTypeOther||''} onChangeText={v => set('bankTypeOther', v)} />
              )}
            </View>
 
            <View style={s.fg}>
-             <Text style={s.label}>رقم الهاتف 1 *</Text>
-             <TextInput style={s.input}
-               placeholder="0912345678" placeholderTextColor="#8a9ab5"
+             <Text style={[s.label, { color: colors.textSoft }]}>رقم الهاتف 1 *</Text>
+             <TextInput style={[s.input, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.text }]}
+               placeholder="0912345678" placeholderTextColor={colors.textMuted}
                value={form.phone1} onChangeText={v => set('phone1', v)}
                keyboardType="phone-pad" />
            </View>
 
            <View style={s.fg}>
-             <Text style={s.label}>رقم الهاتف 2</Text>
-             <TextInput style={s.input}
-               placeholder="اختياري" placeholderTextColor="#8a9ab5"
+             <Text style={[s.label, { color: colors.textSoft }]}>رقم الهاتف 2</Text>
+             <TextInput style={[s.input, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.text }]}
+               placeholder="اختياري" placeholderTextColor={colors.textMuted}
                value={form.phone2} onChangeText={v => set('phone2', v)}
                keyboardType="phone-pad" />
            </View>
 
            <View style={s.fg}>
-             <Text style={s.label}>الرقم الوطني *</Text>
-             <TextInput style={s.input}
-               placeholder="الرقم الوطني" placeholderTextColor="#8a9ab5"
+             <Text style={[s.label, { color: colors.textSoft }]}>الرقم الوطني *</Text>
+             <TextInput style={[s.input, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.text }]}
+               placeholder="الرقم الوطني" placeholderTextColor={colors.textMuted}
                value={form.nationalId} onChangeText={v => set('nationalId', v)}
                keyboardType="number-pad" />
            </View>
 
            <View style={s.fg}>
-             <Text style={s.label}>جواز السفر</Text>
-             <TextInput style={s.input}
-               placeholder="اختياري" placeholderTextColor="#8a9ab5"
+             <Text style={[s.label, { color: colors.textSoft }]}>جواز السفر</Text>
+             <TextInput style={[s.input, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.text }]}
+               placeholder="اختياري" placeholderTextColor={colors.textMuted}
                value={form.passportId||''} onChangeText={v => set('passportId', v)} />
            </View>
 
            <View style={s.fg}>
-             <Text style={s.label}>رقم الحساب</Text>
-             <TextInput style={s.input}
-               placeholder="اختياري" placeholderTextColor="#8a9ab5"
+             <Text style={[s.label, { color: colors.textSoft }]}>رقم الحساب</Text>
+             <TextInput style={[s.input, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.text }]}
+               placeholder="اختياري" placeholderTextColor={colors.textMuted}
                value={form.accountNumber||''} onChangeText={v => set('accountNumber', v)} />
            </View>
 
            <View style={s.fg}>
-             <Text style={s.label}>رقم IBAN</Text>
-             <TextInput style={s.input}
-               placeholder="اختياري" placeholderTextColor="#8a9ab5"
+             <Text style={[s.label, { color: colors.textSoft }]}>رقم IBAN</Text>
+             <TextInput style={[s.input, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.text }]}
+               placeholder="اختياري" placeholderTextColor={colors.textMuted}
                value={form.iban||''} onChangeText={v => set('iban', v.toUpperCase())}
                autoCapitalize="characters" />
            </View>
 
            <View style={s.fg}>
-             <Text style={s.label}>المبلغ المدفوع</Text>
-             <TextInput style={s.input}
-               placeholder="0.00" placeholderTextColor="#8a9ab5"
+             <Text style={[s.label, { color: colors.textSoft }]}>المبلغ المدفوع</Text>
+             <TextInput style={[s.input, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.text }]}
+               placeholder="0.00" placeholderTextColor={colors.textMuted}
                value={form.amount} onChangeText={v => set('amount', v)}
                keyboardType="decimal-pad" />
            </View>
 
            <View style={s.fg}>
-             <Text style={s.label}>العملة</Text>
+             <Text style={[s.label, { color: colors.textSoft }]}>العملة</Text>
              <View style={{flexDirection:'row', gap:8}}>
                {['د.ل','USD'].map(c => (
-                 <TouchableOpacity key={c} style={[s.chip, form.currency===c && s.chipOn]}
+                 <TouchableOpacity key={c} style={[s.chip, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder }, form.currency===c && { borderColor: colors.gold, backgroundColor: colors.goldSoft }]}
                    onPress={() => set('currency', c)}>
-                   <Text style={[s.chipT, form.currency===c && s.chipTOn]}>{c}</Text>
+                   <Text style={[s.chipT, { color: colors.textMuted }, form.currency===c && { color: colors.gold, fontWeight:'700' }]}>{c}</Text>
                  </TouchableOpacity>
                ))}
              </View>
            </View>
 
            <View style={s.fg}>
-             <Text style={s.label}>تم الشراء من طرف</Text>
-             <TextInput style={s.input}
-               placeholder="اسم الموظف" placeholderTextColor="#8a9ab5"
+             <Text style={[s.label, { color: colors.textSoft }]}>تم الشراء من طرف</Text>
+             <TextInput style={[s.input, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.text }]}
+               placeholder="اسم الموظف" placeholderTextColor={colors.textMuted}
                value={form.purchasedBy} onChangeText={v => set('purchasedBy', v)} />
            </View>
 
            <View style={s.fg}>
-             <Text style={s.label}>نوع الحجز</Text>
+             <Text style={[s.label, { color: colors.textSoft }]}>نوع الحجز</Text>
              <View style={{flexDirection:'row', gap:8}}>
                {['كاش','حوالة','بطاقة'].map(t => (
-                 <TouchableOpacity key={t} style={[s.chip, form.paymentType===t && s.chipOn]}
+                 <TouchableOpacity key={t} style={[s.chip, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder }, form.paymentType===t && { borderColor: colors.gold, backgroundColor: colors.goldSoft }]}
                    onPress={() => set('paymentType', t)}>
-                   <Text style={[s.chipT, form.paymentType===t && s.chipTOn]}>{t}</Text>
+                   <Text style={[s.chipT, { color: colors.textMuted }, form.paymentType===t && { color: colors.gold, fontWeight:'700' }]}>{t}</Text>
                  </TouchableOpacity>
                ))}
              </View>
            </View>
 
            <View style={s.fg}>
-             <Text style={s.label}>تاريخ الحجز</Text>
-             <TextInput style={s.input}
-               placeholder="2026-01-01" placeholderTextColor="#8a9ab5"
+             <Text style={[s.label, { color: colors.textSoft }]}>تاريخ الحجز</Text>
+             <TextInput style={[s.input, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.text }]}
+               placeholder="2026-01-01" placeholderTextColor={colors.textMuted}
                value={form.bookingDate} onChangeText={v => set('bookingDate', v)} />
            </View>
 
            <View style={s.fg}>
-             <Text style={s.label}>الرقم السري</Text>
-             <TextInput style={[s.input, {letterSpacing:8, textAlign:'center', fontSize:20}]}
-               placeholder="1234" placeholderTextColor="#8a9ab5"
+             <Text style={[s.label, { color: colors.textSoft }]}>الرقم السري</Text>
+             <TextInput style={[s.input, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.text, letterSpacing:8, textAlign:'center', fontSize:20}]}
+               placeholder="1234" placeholderTextColor={colors.textMuted}
                value={form.pinCode} onChangeText={v => set('pinCode', v.replace(/[^0-9]/g,'').slice(0,4))}
                keyboardType="number-pad" maxLength={4} />
            </View>
 
            <TouchableOpacity style={s.chk} onPress={() => set('cardBooked', !form.cardBooked)}>
              <Text style={s.chkBox}>{form.cardBooked?'✅':'⬜'}</Text>
-             <Text style={s.chkL}>تم حجز البطاقة</Text>
+             <Text style={[s.chkL, { color: colors.textSoft }]}>تم حجز البطاقة</Text>
            </TouchableOpacity>
 
            <TouchableOpacity style={s.chk} onPress={() => set('isSold', !form.isSold)}>
              <Text style={s.chkBox}>{form.isSold?'✅':'⬜'}</Text>
-             <Text style={s.chkL}>تم بيع البطاقة</Text>
+             <Text style={[s.chkL, { color: colors.textSoft }]}>تم بيع البطاقة</Text>
            </TouchableOpacity>
 
            {form.isSold && (
              <View style={s.fg}>
-               <Text style={s.label}>بيعت إلى</Text>
-               <TextInput style={s.input}
-                 placeholder="اسم المشتري" placeholderTextColor="#8a9ab5"
+               <Text style={[s.label, { color: colors.textSoft }]}>بيعت إلى</Text>
+               <TextInput style={[s.input, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.text }]}
+                 placeholder="اسم المشتري" placeholderTextColor={colors.textMuted}
                  value={form.soldTo||''} onChangeText={v => set('soldTo', v)} />
              </View>
            )}
 
            <View style={s.fg}>
-             <Text style={s.label}>ملاحظات</Text>
-             <TextInput style={[s.input, {height:80}]}
-               placeholder="ملاحظات إضافية" placeholderTextColor="#8a9ab5"
+             <Text style={[s.label, { color: colors.textSoft }]}>ملاحظات</Text>
+             <TextInput style={[s.input, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.text, height:80}]}
+               placeholder="ملاحظات إضافية" placeholderTextColor={colors.textMuted}
                value={form.notes} onChangeText={v => set('notes', v)}
                multiline textAlignVertical="top" />
            </View>
@@ -819,12 +824,12 @@ export default function HomeScreen({ subDays, navigation }) {
            <View style={{height:40}} />
          </ScrollView>
 
-         <View style={s.modalFoot}>
-           <TouchableOpacity style={s.cancelBtn} onPress={handleCancel}>
-             <Text style={s.cancelT}>إلغاء</Text>
+         <View style={[s.modalFoot, { backgroundColor: colors.card, borderTopColor: colors.border }]}>
+           <TouchableOpacity style={[s.cancelBtn, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder }]} onPress={handleCancel}>
+             <Text style={[s.cancelT, { color: colors.textMuted }]}>إلغاء</Text>
            </TouchableOpacity>
-           <TouchableOpacity style={s.saveBtn} onPress={handleSave} disabled={saving}>
-             {saving?<ActivityIndicator color="#0a1628"/>:<Text style={s.saveT}>💾 حفظ</Text>}
+           <TouchableOpacity style={[s.saveBtn, { backgroundColor: colors.gold }]} onPress={handleSave} disabled={saving}>
+             {saving?<ActivityIndicator color={colors.bg}/>:<Text style={[s.saveT, { color: colors.bg }]}>💾 حفظ</Text>}
            </TouchableOpacity>
          </View>
        </View>
@@ -834,56 +839,53 @@ export default function HomeScreen({ subDays, navigation }) {
 }
 
 const s = StyleSheet.create({
- wrap:             { flex:1, backgroundColor:'#0a1628' },
- header:           { flexDirection:'row', justifyContent:'space-between', alignItems:'center', padding:16, paddingTop:50, backgroundColor:'#0f2040', borderBottomWidth:1, borderBottomColor:'rgba(201,168,76,0.2)' },
- title:            { fontSize:15, fontWeight:'900', color:'#c9a84c' },
- logout:           { color:'#8a9ab5', fontSize:13 },
- addH:             { color:'#c9a84c', fontSize:24, fontWeight:'700' },
+ wrap:             { flex:1 },
+ header:           { flexDirection:'row', justifyContent:'space-between', alignItems:'center', padding:16, paddingTop:50, borderBottomWidth:1 },
+ title:            { fontSize:15, fontWeight:'900' },
+ logout:           { fontSize:13 },
+ addH:             { fontSize:24, fontWeight:'700' },
  adminBtn:         { fontSize:22 },
- editH:            { color:'#c9a84c', fontSize:16 },
+ themeIcon:        { fontSize:18 },
+ editH:            { fontSize:16 },
  subWarn:          { backgroundColor:'rgba(243,156,18,0.1)', borderWidth:1, borderColor:'rgba(243,156,18,0.3)', borderRadius:10, margin:12, marginBottom:0, padding:10 },
  subWarnT:         { color:'#f39c12', fontSize:12, textAlign:'center' },
- tabs:             { flexDirection:'row', backgroundColor:'rgba(0,0,0,0.2)', margin:12, borderRadius:10, padding:3 },
+ tabs:             { flexDirection:'row', margin:12, borderRadius:10, padding:3 },
  tab:              { flex:1, padding:8, borderRadius:7, alignItems:'center' },
- tabOn:            { backgroundColor:'#c9a84c' },
- tabT:             { color:'#8a9ab5', fontSize:13, fontWeight:'600' },
- tabTOn:           { color:'#0a1628', fontWeight:'700' },
+ tabT:             { fontSize:13, fontWeight:'600' },
  statsGrid:        { flexDirection:'row', flexWrap:'wrap', gap:10, marginBottom:16 },
- statCard:         { width:'47%', backgroundColor:'#0f2040', borderRadius:12, padding:14, alignItems:'center', borderWidth:1, borderColor:'rgba(201,168,76,0.15)' },
+ statCard:         { width:'47%', borderRadius:12, padding:14, alignItems:'center', borderWidth:1 },
  statI:            { fontSize:24, marginBottom:6 },
  statV:            { fontSize:22, fontWeight:'900' },
- statL:            { fontSize:11, color:'#8a9ab5', marginTop:3, textAlign:'center' },
+ statL:            { fontSize:11, marginTop:3, textAlign:'center' },
  waBtn:            { backgroundColor:'rgba(37,211,102,0.1)', borderWidth:1, borderColor:'rgba(37,211,102,0.3)', borderRadius:12, padding:14, alignItems:'center', marginTop:8 },
  waBtnT:           { color:'#25D366', fontSize:14, fontWeight:'700' },
  exportRow:        { flexDirection:'row', gap:8, marginHorizontal:14, marginBottom:8, marginTop:4 },
- exportBtn:        { backgroundColor:'rgba(255,255,255,0.06)', borderRadius:10, paddingHorizontal:16, paddingVertical:9, borderWidth:1, borderColor:'rgba(255,255,255,0.15)', flex:1, alignItems:'center' },
- exportT:          { color:'#c9a84c', fontSize:13, fontWeight:'700' },
+ exportBtn:        { borderRadius:10, paddingHorizontal:16, paddingVertical:9, borderWidth:1, flex:1, alignItems:'center' },
+ exportT:          { fontSize:13, fontWeight:'700' },
  searchRow:        { flexDirection:'row', alignItems:'center', marginHorizontal:14, marginBottom:4, gap:8 },
- search:           { backgroundColor:'rgba(255,255,255,0.06)', borderRadius:10, padding:12, color:'#f8f6f0', borderWidth:1, borderColor:'rgba(255,255,255,0.1)', textAlign:'right' },
- filterBtn:        { backgroundColor:'rgba(255,255,255,0.06)', borderRadius:10, padding:12, borderWidth:1, borderColor:'rgba(255,255,255,0.1)' },
+ search:           { borderRadius:10, padding:12, borderWidth:1, textAlign:'right' },
+ filterBtn:        { borderRadius:10, padding:12, borderWidth:1 },
  filterBtnT:       { fontSize:18 },
- filtersBox:       { backgroundColor:'rgba(15,32,64,0.9)', marginHorizontal:14, borderRadius:12, padding:12, marginBottom:8, borderWidth:1, borderColor:'rgba(201,168,76,0.15)' },
- filterLabel:      { fontSize:11, color:'#8a9ab5', marginBottom:6, fontWeight:'600' },
- fChip:            { paddingHorizontal:12, paddingVertical:6, borderRadius:20, borderWidth:1, borderColor:'rgba(255,255,255,0.12)', backgroundColor:'rgba(255,255,255,0.05)', marginLeft:6 },
- fChipOn:          { borderColor:'#c9a84c', backgroundColor:'rgba(201,168,76,0.15)' },
- fChipT:           { color:'#8a9ab5', fontSize:12 },
- fChipTOn:         { color:'#c9a84c', fontWeight:'700' },
- resultCount:      { fontSize:11, color:'#8a9ab5', marginHorizontal:14, marginBottom:4 },
- card:             { backgroundColor:'#0f2040', borderRadius:12, padding:14, marginBottom:10, borderWidth:1, borderColor:'rgba(201,168,76,0.15)' },
+ filtersBox:       { marginHorizontal:14, borderRadius:12, padding:12, marginBottom:8, borderWidth:1 },
+ filterLabel:      { fontSize:11, marginBottom:6, fontWeight:'600' },
+ fChip:            { paddingHorizontal:12, paddingVertical:6, borderRadius:20, borderWidth:1, marginLeft:6 },
+ fChipT:           { fontSize:12 },
+ resultCount:      { fontSize:11, marginHorizontal:14, marginBottom:4 },
+ card:             { borderRadius:12, padding:14, marginBottom:10, borderWidth:1 },
  soldCard:         { opacity:0.5 },
  cardTop:          { flexDirection:'row', justifyContent:'space-between', alignItems:'center', marginBottom:6 },
- name:             { fontSize:15, fontWeight:'700', color:'#f8f6f0', flex:1, marginLeft:8 },
- bank:             { fontSize:12, color:'#8a9ab5', marginBottom:2 },
- phone:            { fontSize:12, color:'#c5cedd', marginBottom:2 },
- amount:           { fontSize:13, color:'#c9a84c', fontWeight:'700', marginBottom:8 },
- noteBox:          { marginTop:8, marginBottom:8, backgroundColor:'rgba(255,255,255,0.04)', borderRadius:10, padding:10, borderWidth:1, borderColor:'rgba(255,255,255,0.08)' },
- noteLabel:        { fontSize:11, color:'#8a9ab5', marginBottom:6, fontWeight:'600' },
- noteInput:        { color:'#f8f6f0', fontSize:13, minHeight:36, textAlign:'right', padding:0 },
- noteSaveBtn:      { backgroundColor:'#c9a84c', borderRadius:8, paddingVertical:8, alignItems:'center', marginTop:8 },
- noteSaveBtnT:     { color:'#0a1628', fontSize:12, fontWeight:'700' },
+ name:             { fontSize:15, fontWeight:'700', flex:1, marginLeft:8 },
+ bank:             { fontSize:12, marginBottom:2 },
+ phone:            { fontSize:12, marginBottom:2 },
+ amount:           { fontSize:13, fontWeight:'700', marginBottom:8 },
+ noteBox:          { marginTop:8, marginBottom:8, borderRadius:10, padding:10, borderWidth:1 },
+ noteLabel:        { fontSize:11, marginBottom:6, fontWeight:'600' },
+ noteInput:        { fontSize:13, minHeight:36, textAlign:'right', padding:0 },
+ noteSaveBtn:      { borderRadius:8, paddingVertical:8, alignItems:'center', marginTop:8 },
+ noteSaveBtnT:     { fontSize:12, fontWeight:'700' },
  actions:          { flexDirection:'row', gap:8, marginTop:6 },
- editBtn:          { backgroundColor:'rgba(201,168,76,0.1)', borderRadius:8, paddingHorizontal:12, paddingVertical:6, borderWidth:1, borderColor:'rgba(201,168,76,0.3)' },
- editT:            { color:'#c9a84c', fontSize:12, fontWeight:'600' },
+ editBtn:          { borderRadius:8, paddingHorizontal:12, paddingVertical:6, borderWidth:1 },
+ editT:            { fontSize:12, fontWeight:'600' },
  pdfBtn:           { backgroundColor:'rgba(30,64,175,0.1)', borderRadius:8, paddingHorizontal:12, paddingVertical:6, borderWidth:1, borderColor:'rgba(30,64,175,0.3)' },
  pdfT:             { color:'#60a5fa', fontSize:12, fontWeight:'600' },
  delBtn:           { backgroundColor:'rgba(231,76,60,0.1)', borderRadius:8, paddingHorizontal:12, paddingVertical:6, borderWidth:1, borderColor:'rgba(231,76,60,0.3)' },
@@ -895,42 +897,39 @@ const s = StyleSheet.create({
  badgeT:           { fontSize:11, fontWeight:'700', color:'#f8f6f0' },
  empty:            { alignItems:'center', paddingTop:60 },
  emptyI:           { fontSize:40, opacity:0.3, marginBottom:10 },
- emptyT:           { color:'#8a9ab5', fontSize:13 },
- fab:              { position:'absolute', bottom:30, left:20, width:56, height:56, borderRadius:28, backgroundColor:'#c9a84c', alignItems:'center', justifyContent:'center', elevation:5 },
- fabT:             { fontSize:28, color:'#0a1628', fontWeight:'700', marginTop:-2 },
- viewSection:      { backgroundColor:'#0f2040', borderRadius:12, marginHorizontal:14, marginBottom:8, borderWidth:1, borderColor:'rgba(201,168,76,0.15)', overflow:'hidden' },
- viewSectionTitle: { backgroundColor:'rgba(201,168,76,0.1)', padding:12, fontSize:13, fontWeight:'700', color:'#c9a84c', borderBottomWidth:1, borderBottomColor:'rgba(201,168,76,0.15)' },
- viewRow:          { flexDirection:'row', justifyContent:'space-between', alignItems:'center', paddingHorizontal:14, paddingVertical:10, borderBottomWidth:1, borderBottomColor:'rgba(255,255,255,0.04)' },
- viewLabel:        { fontSize:12, color:'#8a9ab5', width:110, flexShrink:0 },
+ emptyT:           { fontSize:13 },
+ fab:              { position:'absolute', bottom:30, left:20, width:56, height:56, borderRadius:28, alignItems:'center', justifyContent:'center', elevation:5 },
+ fabT:             { fontSize:28, fontWeight:'700', marginTop:-2 },
+ viewSection:      { borderRadius:12, marginHorizontal:14, marginBottom:8, borderWidth:1, overflow:'hidden' },
+ viewSectionTitle: { padding:12, fontSize:13, fontWeight:'700', borderBottomWidth:1 },
+ viewRow:          { flexDirection:'row', justifyContent:'space-between', alignItems:'center', paddingHorizontal:14, paddingVertical:10, borderBottomWidth:1 },
+ viewLabel:        { fontSize:12, width:110, flexShrink:0 },
  viewValWrap:      { flex:1, flexDirection:'row', alignItems:'center', justifyContent:'flex-end', gap:6 },
- viewVal:          { fontSize:13, color:'#f8f6f0', fontWeight:'500', flex:1, textAlign:'right' },
- copyBtn:          { backgroundColor:'rgba(201,168,76,0.1)', borderRadius:6, padding:4 },
+ viewVal:          { fontSize:13, fontWeight:'500', flex:1, textAlign:'right' },
+ copyBtn:          { borderRadius:6, padding:4 },
  copyBtnT:         { fontSize:12 },
  bankModalOverlay: { flex:1, backgroundColor:'rgba(0,0,0,0.6)', justifyContent:'flex-end' },
- bankModalWrap:    { backgroundColor:'#0f2040', borderRadius:20, maxHeight:'70%', borderWidth:1, borderColor:'rgba(201,168,76,0.2)' },
- bankModalHead:    { flexDirection:'row', justifyContent:'space-between', alignItems:'center', padding:16, borderBottomWidth:1, borderBottomColor:'rgba(255,255,255,0.08)' },
- bankModalTitle:   { fontSize:16, fontWeight:'700', color:'#c9a84c' },
- bankOption:       { flexDirection:'row', justifyContent:'space-between', alignItems:'center', padding:16, borderBottomWidth:1, borderBottomColor:'rgba(255,255,255,0.05)' },
- bankOptionOn:     { backgroundColor:'rgba(201,168,76,0.08)' },
- bankOptionT:      { fontSize:15, color:'#f8f6f0' },
- bankOptionTOn:    { color:'#c9a84c', fontWeight:'700' },
- modalWrap:        { flex:1, backgroundColor:'#0a1628' },
- modalHead:        { flexDirection:'row', alignItems:'center', justifyContent:'space-between', padding:16, paddingTop:50, backgroundColor:'#0f2040', borderBottomWidth:1, borderBottomColor:'rgba(201,168,76,0.2)' },
- modalTitle:       { fontSize:16, fontWeight:'900', color:'#c9a84c' },
- modalClose:       { fontSize:18, color:'#8a9ab5', padding:4 },
- modalFoot:        { flexDirection:'row', gap:8, padding:16, backgroundColor:'#0f2040', borderTopWidth:1, borderTopColor:'rgba(201,168,76,0.2)' },
+ bankModalWrap:    { borderRadius:20, maxHeight:'70%', borderWidth:1 },
+ bankModalHead:    { flexDirection:'row', justifyContent:'space-between', alignItems:'center', padding:16, borderBottomWidth:1 },
+ bankModalTitle:   { fontSize:16, fontWeight:'700' },
+ bankOption:       { flexDirection:'row', justifyContent:'space-between', alignItems:'center', padding:16, borderBottomWidth:1 },
+ bankOptionT:      { fontSize:15 },
+ modalWrap:        { flex:1 },
+ modalHead:        { flexDirection:'row', alignItems:'center', justifyContent:'space-between', padding:16, paddingTop:50, borderBottomWidth:1 },
+ modalTitle:       { fontSize:16, fontWeight:'900' },
+ modalClose:       { fontSize:18, padding:4 },
+ modalFoot:        { flexDirection:'row', gap:8, padding:16, borderTopWidth:1 },
  fg:               { marginBottom:14 },
- label:            { fontSize:12, color:'#c5cedd', marginBottom:5, fontWeight:'500' },
- input:            { backgroundColor:'rgba(255,255,255,0.06)', borderWidth:1.5, borderColor:'rgba(255,255,255,0.1)', borderRadius:10, padding:12, color:'#f8f6f0', fontSize:15, textAlign:'right' },
- chip:             { paddingHorizontal:14, paddingVertical:8, borderRadius:20, borderWidth:1.5, borderColor:'rgba(255,255,255,0.15)', backgroundColor:'rgba(255,255,255,0.05)', marginLeft:8 },
- chipOn:           { borderColor:'#c9a84c', backgroundColor:'rgba(201,168,76,0.15)' },
- chipT:            { color:'#8a9ab5', fontSize:13 },
- chipTOn:          { color:'#c9a84c', fontWeight:'700' },
+ label:            { fontSize:12, marginBottom:5, fontWeight:'500' },
+ input:            { borderWidth:1.5, borderRadius:10, padding:12, fontSize:15, textAlign:'right' },
+ chip:             { paddingHorizontal:14, paddingVertical:8, borderRadius:20, borderWidth:1.5, marginLeft:8 },
+ chipT:            { fontSize:13 },
  chk:              { flexDirection:'row', alignItems:'center', gap:10, marginBottom:12 },
  chkBox:           { fontSize:20 },
- chkL:             { fontSize:14, color:'#c5cedd' },
- cancelBtn:        { flex:1, backgroundColor:'rgba(255,255,255,0.06)', borderRadius:10, padding:14, alignItems:'center', borderWidth:1, borderColor:'rgba(255,255,255,0.1)' },
- cancelT:          { color:'#8a9ab5', fontSize:15 },
- saveBtn:          { flex:2, backgroundColor:'#c9a84c', borderRadius:10, padding:14, alignItems:'center' },
- saveT:            { color:'#0a1628', fontSize:15, fontWeight:'700' },
+ chkL:             { fontSize:14 },
+ cancelBtn:        { flex:1, borderRadius:10, padding:14, alignItems:'center', borderWidth:1 },
+ cancelT:          { fontSize:15 },
+ saveBtn:          { flex:2, borderRadius:10, padding:14, alignItems:'center' },
+ saveT:            { color:'#f8f6f0', fontSize:15, fontWeight:'700' },
 });
+
