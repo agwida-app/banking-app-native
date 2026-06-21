@@ -9,6 +9,7 @@ import {
  collection, serverTimestamp, setDoc
 } from 'firebase/firestore';
 import { auth, db } from '../firebase';
+import { useTheme } from '../ThemeContext';
 
 const COMMISSION_PCT = 10;
 const PLANS = [
@@ -20,6 +21,7 @@ const PLANS = [
 ];
 
 export default function ActivationScreen({ user, subStatus }) {
+ const { colors, isDark, toggleTheme } = useTheme();
  const [code, setCode] = useState('');
  const [refCode, setRefCode] = useState('');
  const [load, setLoad] = useState(false);
@@ -92,10 +94,14 @@ export default function ActivationScreen({ user, subStatus }) {
  };
 
  return (
-   <View style={s.wrap}>
+   <View style={[s.wrap, { backgroundColor: colors.bg }]}>
+     <TouchableOpacity style={[s.themeBtn, { backgroundColor: colors.card, borderColor: colors.border }]} onPress={toggleTheme}>
+       <Text style={s.themeBtnT}>{isDark ? '☀️' : '🌙'}</Text>
+     </TouchableOpacity>
+
      <Text style={s.logo}>💳</Text>
-     <Text style={s.title}>تفعيل الاشتراك</Text>
-     <Text style={s.sub}>{user.email}</Text>
+     <Text style={[s.title, { color: colors.text }]}>تفعيل الاشتراك</Text>
+     <Text style={[s.sub, { color: colors.textMuted }]}>{user.email}</Text>
 
      {subStatus === 'expired' && (
        <View style={s.expBox}>
@@ -103,24 +109,24 @@ export default function ActivationScreen({ user, subStatus }) {
        </View>
      )}
 
-     <View style={s.card}>
-       <Text style={s.label}>كود التفعيل *</Text>
-       <TextInput style={s.input}
+     <View style={[s.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+       <Text style={[s.label, { color: colors.textSoft }]}>كود التفعيل *</Text>
+       <TextInput style={[s.input, { backgroundColor: colors.inputBg, borderColor: colors.border, color: colors.text }]}
          placeholder="XXXXXXXX"
-         placeholderTextColor="#8a9ab5"
+         placeholderTextColor={colors.textMuted}
          value={code}
          onChangeText={v => setCode(v.toUpperCase())}
          autoCapitalize="characters"
          autoCorrect={false}
          maxLength={12} />
 
-       <Text style={[s.label, {marginTop:12}]}>
+       <Text style={[s.label, { color: colors.textSoft, marginTop:12 }]}>
          كود الإحالة
          <Text style={{color:'#2ecc71', fontWeight:'400'}}> (اختياري — للحصول على شهر مجاني 🎁)</Text>
        </Text>
-       <TextInput style={s.input}
+       <TextInput style={[s.input, { backgroundColor: colors.inputBg, borderColor: colors.border, color: colors.text }]}
          placeholder="مثال: MOHAMAD47"
-         placeholderTextColor="#8a9ab5"
+         placeholderTextColor={colors.textMuted}
          value={refCode}
          onChangeText={v => setRefCode(v.toUpperCase())}
          autoCapitalize="characters"
@@ -132,8 +138,8 @@ export default function ActivationScreen({ user, subStatus }) {
          </View>
        )}
 
-       <TouchableOpacity style={s.btn} onPress={activate} disabled={load}>
-         {load ? <ActivityIndicator color="#0a1628" /> : <Text style={s.btnT}>🔓 تفعيل الاشتراك</Text>}
+       <TouchableOpacity style={[s.btn, { backgroundColor: colors.gold }]} onPress={activate} disabled={load}>
+         {load ? <ActivityIndicator color={colors.bg} /> : <Text style={[s.btnT, { color: colors.bg }]}>🔓 تفعيل الاشتراك</Text>}
        </TouchableOpacity>
      </View>
 
@@ -143,27 +149,30 @@ export default function ActivationScreen({ user, subStatus }) {
      </TouchableOpacity>
 
      <TouchableOpacity onPress={() => signOut(auth)}>
-       <Text style={s.link}>تسجيل خروج</Text>
+       <Text style={[s.link, { color: colors.textMuted }]}>تسجيل خروج</Text>
      </TouchableOpacity>
    </View>
  );
 }
 
 const s = StyleSheet.create({
- wrap:     { flex:1, backgroundColor:'#0a1628', alignItems:'center', justifyContent:'center', padding:24 },
+ wrap:     { flex:1, alignItems:'center', justifyContent:'center', padding:24 },
+ themeBtn: { position:'absolute', top:50, left:16, width:40, height:40, borderRadius:20, borderWidth:1, alignItems:'center', justifyContent:'center', zIndex:10 },
+ themeBtnT:{ fontSize:18 },
  logo:     { fontSize:50, marginBottom:12 },
- title:    { fontSize:22, fontWeight:'900', color:'#f8f6f0', marginBottom:4 },
- sub:      { fontSize:13, color:'#8a9ab5', marginBottom:20 },
+ title:    { fontSize:22, fontWeight:'900', marginBottom:4 },
+ sub:      { fontSize:13, marginBottom:20 },
  expBox:   { backgroundColor:'rgba(231,76,60,0.1)', borderWidth:1, borderColor:'rgba(231,76,60,0.3)', borderRadius:10, padding:12, marginBottom:16, width:'100%' },
  expT:     { color:'#ff8a80', fontSize:13, textAlign:'center' },
- card:     { backgroundColor:'#0f2040', borderRadius:16, padding:24, width:'100%', borderWidth:1, borderColor:'rgba(201,168,76,0.2)', marginBottom:16 },
- label:    { fontSize:13, color:'#c5cedd', marginBottom:8, fontWeight:'600' },
- input:    { backgroundColor:'rgba(255,255,255,0.08)', borderWidth:2, borderColor:'rgba(201,168,76,0.3)', borderRadius:12, padding:14, color:'#f8f6f0', fontSize:18, textAlign:'center', letterSpacing:3, marginBottom:8 },
+ card:     { borderRadius:16, padding:24, width:'100%', borderWidth:1, marginBottom:16 },
+ label:    { fontSize:13, marginBottom:8, fontWeight:'600' },
+ input:    { borderWidth:2, borderRadius:12, padding:14, fontSize:18, textAlign:'center', letterSpacing:3, marginBottom:8 },
  bonusBox: { backgroundColor:'rgba(46,204,113,0.1)', borderWidth:1, borderColor:'rgba(46,204,113,0.3)', borderRadius:8, padding:10, marginBottom:8, alignItems:'center' },
  bonusT:   { color:'#2ecc71', fontSize:13, fontWeight:'700' },
- btn:      { backgroundColor:'#c9a84c', borderRadius:10, padding:14, alignItems:'center', marginTop:8 },
- btnT:     { color:'#0a1628', fontSize:15, fontWeight:'700' },
+ btn:      { borderRadius:10, padding:14, alignItems:'center', marginTop:8 },
+ btnT:     { fontSize:15, fontWeight:'700' },
  waBtn:    { backgroundColor:'rgba(37,211,102,0.1)', borderWidth:1, borderColor:'rgba(37,211,102,0.3)', borderRadius:12, padding:14, width:'100%', alignItems:'center', marginBottom:14 },
  waBtnT:   { color:'#25D366', fontSize:14, fontWeight:'700' },
- link:     { color:'#8a9ab5', fontSize:13, textDecorationLine:'underline' },
+ link:     { fontSize:13, textDecorationLine:'underline' },
 });
+
