@@ -17,7 +17,9 @@
         "backgroundColor": "#0a1628"
       },
       "package": "com.agwida.bankingapp",
-      "versionCode": 1
+      "versionCode": 1,
+      "compileSdkVersion": 35,
+      "targetSdkVersion": 35
     },
     "extra": {
       "eas": {
