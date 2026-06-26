@@ -414,7 +414,6 @@ export default function HomeScreen({ subDays, navigation }) {
              { i:'⏳', v:pending, l:'لم يتم الحجز', c:'#f39c12' },
              { i:'🔴', v:sold, l:'تم البيع', c:'#e74c3c' },
              { i:'💰', v:`${totalAmt.toLocaleString('en')} د.ل`, l:'إجمالي المبالغ', c:colors.gold },
-             { i:'📊', v:total?`${Math.round(booked/total*100)}%`:'0%', l:'نسبة الحجز', c:'#2ecc71' },
            ].map((item, i) => (
              <View key={i} style={[s.statCard, { backgroundColor: colors.card, borderColor: colors.borderSoft }]}>
                <Text style={s.statI}>{item.i}</Text>
