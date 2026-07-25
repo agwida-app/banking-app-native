@@ -1,11 +1,12 @@
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 
-// TODO: run `flutterfire configure --project=agwida-39e21` from this folder
-// to generate lib/firebase_options.dart, then call
-// Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform)
-// in main() before runApp().
+import 'firebase_options.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   runApp(const BankingApp());
 }
 
@@ -49,6 +50,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isLoading = false;
+  String? _error;
 
   @override
   void dispose() {
@@ -57,10 +59,29 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  void _handleLogin() {
+  Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
-    // TODO: wire to firebase_auth once firebase_options.dart is generated.
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+    try {
+      await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+      );
+    } on FirebaseAuthException catch (e) {
+      setState(() {
+        _error = switch (e.code) {
+          'user-not-found' => 'البريد غير مسجل',
+          'wrong-password' || 'invalid-credential' => 'كلمة المرور غير صحيحة',
+          'invalid-email' => 'البريد الإلكتروني غير صالح',
+          _ => 'حدث خطأ، حاول مرة أخرى',
+        };
+      });
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   @override
@@ -109,6 +130,13 @@ class _LoginScreenState extends State<LoginScreen> {
                         ? 'أدخل كلمة المرور'
                         : null,
                   ),
+                  if (_error != null) ...[
+                    const SizedBox(height: 16),
+                    Text(
+                      _error!,
+                      style: const TextStyle(color: Colors.redAccent),
+                    ),
+                  ],
                   const SizedBox(height: 24),
                   SizedBox(
                     width: double.infinity,
