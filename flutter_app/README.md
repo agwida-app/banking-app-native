@@ -8,31 +8,42 @@
 
 ## البدء على جهازك (Windows + Android Studio)
 
-1. ثبّت [Flutter SDK](https://docs.flutter.dev/get-started/install/windows) وشغّل `flutter doctor` للتأكد من جاهزية Android toolchain.
-2. من هذا المجلد:
-   ```
-   flutter pub get
-   ```
-3. ولّد إعدادات Firebase الخاصة بالمنصّات (Android/iOS) — يحتاج تسجيل دخول Firebase من جهازك:
-   ```
-   dart pub global activate flutterfire_cli
-   flutterfire configure --project=agwida-39e21
-   ```
-   هذا يولّد `lib/firebase_options.dart` تلقائياً بمفاتيح خاصة بكل منصّة.
-4. في `lib/main.dart`، فعّل التهيئة في أول `main()`:
-   ```dart
-   WidgetsFlutterBinding.ensureInitialized();
-   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-   ```
-5. شغّل التطبيق:
+1. افتح هذا المجلد (`flutter_app`) كمشروع في Android Studio.
+2. تأكد من ضبط **Flutter SDK path** و**Dart SDK path** في Settings → Languages & Frameworks.
+3. شغّل جهاز/محاكي، ثم `Shift+F10` أو:
    ```
    flutter run
    ```
 
 ## الحالة الحالية
 
-- ✅ هيكل مشروع Flutter قياسي (`flutter create`)
-- ✅ حزم Firebase مضافة إلى `pubspec.yaml`: `firebase_core`, `firebase_auth`, `cloud_firestore`
-- ✅ شاشة تسجيل دخول أولية (`lib/main.dart`) بواجهة عربية RTL ونفس ألوان الهوية البصرية
-- ⏳ ربط Firebase فعلياً (يتطلب `flutterfire configure` من جهازك)
-- ⏳ باقي الشاشات (الرئيسية، التفعيل، لوحة الأدمن) — نُبنى تباعاً بنفس منطق نسخة React Native
+- ✅ تسجيل الدخول / إنشاء حساب / نسيت كلمة المرور (`AuthScreen`)
+- ✅ تفعيل الاشتراك بالكود + نظام الإحالة (بونص شهر مجاني) (`ActivationScreen`)
+- ✅ الشاشة الرئيسية: إدارة العملاء الكاملة (إضافة/تعديل/حذف/بحث/فلترة/فرز)، تعديل الملاحظات مباشرة، تصدير CSV (`HomeScreen`)
+- ✅ تبويب الإحصائيات (إجمالي، محجوز، معلّق، مباع، المبالغ)
+- ✅ لوحة الأدمن: إدارة الاشتراكات (إنشاء/تجديد/حذف/إعادة ضبط الأجهزة)، المسوّقون والعمولات، تغيير كلمة المرور (`AdminScreen`)
+- ✅ **قسم المصروفات (جديد، غير موجود في نسخة الويب/React Native):** تسجيل حركات مالية (مصروف/دخل) مع الفئة، الشخص المرتبط بالحركة (من أُعطي/من أُخذ منه)، ملاحظة، تاريخ، وإحصائيات إجمالي المصروفات/الدخل/الصافي (`ExpensesScreen`)
+- ✅ حد 7 أجهزة لكل اشتراك + شاشة تجاوز الحد
+- ✅ وضع فاتح/غامق مع الحفظ التلقائي
+- ✅ `flutter analyze` و `flutter test` ناجحان بدون أخطاء
+
+## ⚠️ خطوة مطلوبة: قواعد Firestore الأمنية
+
+قسم المصروفات الجديد يستخدم مجموعة Firestore جديدة اسمها `expenses`. يجب إضافة هذه القاعدة
+في [Firebase Console](https://console.firebase.google.com/project/agwida-39e21/firestore/rules)
+(نفس مكان القواعد الحالية لمجموعة `clients`):
+
+```javascript
+match /expenses/{docId} {
+  allow read, update, delete: if request.auth != null &&
+    request.auth.uid == resource.data.uid;
+  allow create: if request.auth != null &&
+    request.auth.uid == request.resource.data.uid;
+}
+```
+
+بدون هذه القاعدة، قسم المصروفات لن يعمل (ستظهر رسالة "permission-denied").
+
+## معلقة / لم تُبنَ بعد
+
+- ⏳ تصدير PDF (تصدير CSV متوفر الآن كبديل يعمل بنفس الغرض عبر خاصية المشاركة)
