@@ -206,9 +206,10 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
           .collection('expenses')
           .where('uid', isEqualTo: user.uid)
           .orderBy('date', descending: true)
-          .snapshots(),
+          .snapshots(includeMetadataChanges: true),
       builder: (context, snapshot) {
         final loading = snapshot.connectionState == ConnectionState.waiting;
+        final isOffline = snapshot.data?.metadata.isFromCache ?? false;
         final all = (snapshot.data?.docs ?? []).map((d) => Expense.fromDoc(d.id, d.data())).toList();
 
         final totalExpense = all.where((e) => e.kind == ExpenseKind.expense).fold<double>(0, (s, e) => s + e.amount);
@@ -225,6 +226,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
           children: [
             Column(
               children: [
+                OfflineBanner(isOffline: isOffline),
                 Padding(
                   padding: const EdgeInsets.all(14),
                   child: Row(

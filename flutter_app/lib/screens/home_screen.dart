@@ -173,9 +173,10 @@ class _ClientsAndStatsTabState extends State<_ClientsAndStatsTab> {
           .collection('clients')
           .where('uid', isEqualTo: user.uid)
           .orderBy('createdAt', descending: true)
-          .snapshots(),
+          .snapshots(includeMetadataChanges: true),
       builder: (context, snapshot) {
         final loading = snapshot.connectionState == ConnectionState.waiting;
+        final isOffline = snapshot.data?.metadata.isFromCache ?? false;
         final clients = (snapshot.data?.docs ?? []).map((d) => Client.fromDoc(d.id, d.data())).toList();
         final filtered = _applyFilters(clients);
 
@@ -188,6 +189,7 @@ class _ClientsAndStatsTabState extends State<_ClientsAndStatsTab> {
 
         return Column(
           children: [
+            OfflineBanner(isOffline: isOffline),
             if (widget.subDays != null && widget.subDays! <= 7 && widget.subDays! > 0 && widget.subDays! < 9999)
               Container(
                 margin: const EdgeInsets.fromLTRB(12, 12, 12, 0),

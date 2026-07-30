@@ -2,6 +2,40 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../theme/app_theme.dart';
 
+class OfflineBanner extends StatelessWidget {
+  final bool isOffline;
+  const OfflineBanner({super.key, required this.isOffline});
+
+  @override
+  Widget build(BuildContext context) {
+    if (!isOffline) return const SizedBox.shrink();
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: const Color(0x1AF39C12),
+        border: Border.all(color: const Color(0x4DF39C12)),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: const Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text('📡', style: TextStyle(fontSize: 13)),
+          SizedBox(width: 6),
+          Flexible(
+            child: Text(
+              'غير متصل بالإنترنت — التغييرات ستُحفظ وتتزامن تلقائياً عند رجوع الاتصال',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Color(0xFFF39C12), fontSize: 11.5, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class ThemedField extends StatelessWidget {
   final String label;
   final TextEditingController controller;
