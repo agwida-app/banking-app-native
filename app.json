@@ -1,0 +1,28 @@
+{
+  "expo": {
+    "name": "إدارة بطاقاتك",
+    "slug": "banking-app",
+    "owner": "agwidas-organization",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./icon.png",
+    "splash": {
+      "image": "./splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0a1628"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./icon.png",
+        "backgroundColor": "#0a1628"
+      },
+      "package": "com.agwida.bankingapp",
+      "versionCode": 3
+    },
+    "extra": {
+      "eas": {
+        "projectId": "c6b77d79-573a-4df4-a824-b190f67eabb1"
+      }
+    }
+  }
+}
