@@ -33,14 +33,14 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Build debug APK (arm64 only, smaller download)
-        run: flutter build apk --debug --target-platform android-arm64 --split-per-abi
+      - name: Build debug APKs (split per architecture, smaller downloads)
+        run: flutter build apk --debug --split-per-abi
 
-      - name: Upload APK
+      - name: Upload APKs
         uses: actions/upload-artifact@v4
         with:
           name: banking-app-debug-apk
-          path: flutter_app/build/app/outputs/flutter-apk/app-arm64-v8a-debug.apk
+          path: flutter_app/build/app/outputs/flutter-apk/*.apk
           retention-days: 30
 
       - name: Publish downloadable release (no login required)
@@ -48,6 +48,12 @@ jobs:
         with:
           tag_name: latest-debug-apk
           name: "آخر نسخة تجريبية (Debug)"
-          body: "يُحدَّث هذا الإصدار تلقائياً مع كل دفعة جديدة. نزّل ملف app-arm64-v8a-debug.apk أدناه وثبّته مباشرة (متوافق مع أغلب هواتف أندرويد الحديثة)."
+          body: |
+            يُحدَّث هذا الإصدار تلقائياً مع كل دفعة جديدة.
+
+            اختر الملف المناسب لهاتفك:
+            - **app-arm64-v8a-debug.apk** — جرّب هذا أولاً (يناسب أغلب الهواتف من 2017 فما فوق)
+            - **app-armeabi-v7a-debug.apk** — إذا فشل الأول (للهواتف الأقدم/الأضعف)
+            - **app-x86_64-debug.apk** — فقط للمحاكيات على الكمبيوتر
           prerelease: true
-          files: flutter_app/build/app/outputs/flutter-apk/app-arm64-v8a-debug.apk
+          files: flutter_app/build/app/outputs/flutter-apk/*.apk
