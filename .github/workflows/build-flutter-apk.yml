@@ -12,6 +12,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     defaults:
       run:
         working-directory: flutter_app
@@ -40,3 +42,12 @@ jobs:
           name: banking-app-debug-apk
           path: flutter_app/build/app/outputs/flutter-apk/app-debug.apk
           retention-days: 30
+
+      - name: Publish downloadable release (no login required)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest-debug-apk
+          name: "آخر نسخة تجريبية (Debug)"
+          body: "يُحدَّث هذا الإصدار تلقائياً مع كل دفعة جديدة. نزّل ملف app-debug.apk أدناه وثبّته مباشرة."
+          prerelease: true
+          files: flutter_app/build/app/outputs/flutter-apk/app-debug.apk
