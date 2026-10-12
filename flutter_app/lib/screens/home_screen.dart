@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -88,6 +89,7 @@ class _ClientsAndStatsTabState extends State<_ClientsAndStatsTab> {
   String filterBank = 'all';
   String sortBy = 'newest';
   bool showFilters = false;
+  String chartMode = 'bar';
 
   final Map<String, TextEditingController> _noteCtrls = {};
   final Map<String, bool> _noteSaving = {};
@@ -215,7 +217,7 @@ class _ClientsAndStatsTabState extends State<_ClientsAndStatsTab> {
             ),
             Expanded(
               child: tab == 'stats'
-                  ? _buildStats(colors, total, booked, pending, sold, totalAmt)
+                  ? _buildStats(colors, clients, total, booked, pending, sold, totalAmt)
                   : _buildClients(colors, loading, clients, filtered, bankNames, total, booked, pending, sold),
             ),
           ],
@@ -259,7 +261,19 @@ class _ClientsAndStatsTabState extends State<_ClientsAndStatsTab> {
     );
   }
 
-  Widget _buildStats(AppColors colors, int total, int booked, int pending, int sold, double totalAmt) {
+  List<MapEntry<String, int>> _bankCounts(List<Client> clients) {
+    final counts = <String, int>{};
+    for (final c in clients) {
+      final b = c.bankLabel;
+      if (b.isEmpty) continue;
+      counts[b] = (counts[b] ?? 0) + 1;
+    }
+    final entries = counts.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
+    return entries;
+  }
+
+  Widget _buildStats(AppColors colors, List<Client> clients, int total, int booked, int pending, int sold, double totalAmt) {
+    final bankCounts = _bankCounts(clients);
     return ListView(
       padding: const EdgeInsets.all(14),
       children: [
@@ -275,6 +289,10 @@ class _ClientsAndStatsTabState extends State<_ClientsAndStatsTab> {
             StatCard(icon: '💰', value: '${totalAmt.toStringAsFixed(0)} د.ل', label: 'إجمالي المبالغ', valueColor: colors.gold, colors: colors),
           ],
         ),
+        if (bankCounts.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          _bankDistributionCard(colors, bankCounts),
+        ],
         const SizedBox(height: 16),
         OutlinedButton(
           style: OutlinedButton.styleFrom(
@@ -286,6 +304,131 @@ class _ClientsAndStatsTabState extends State<_ClientsAndStatsTab> {
           child: const Text('📱 تواصل مع خدمة العملاء', style: TextStyle(color: Color(0xFF25D366), fontWeight: FontWeight.w700)),
         ),
       ],
+    );
+  }
+
+  static const List<Color> _chartPalette = [
+    Color(0xFFC9A84C), // gold
+    Color(0xFF2ECC71), // green
+    Color(0xFF8C6EE6), // purple
+    Color(0xFF4AA8E0), // blue
+    Color(0xFFF39C12), // orange
+    Color(0xFFE74C3C), // red
+    Color(0xFF2EC4B6), // teal
+  ];
+
+  Widget _bankDistributionCard(AppColors colors, List<MapEntry<String, int>> bankCounts) {
+    final maxCount = bankCounts.first.value;
+    final totalCount = bankCounts.fold<int>(0, (s, e) => s + e.value);
+
+    Widget toggleBtn(String mode, String icon) {
+      final active = chartMode == mode;
+      return InkWell(
+        borderRadius: BorderRadius.circular(8),
+        onTap: () => setState(() => chartMode = mode),
+        child: Container(
+          padding: const EdgeInsets.all(7),
+          decoration: BoxDecoration(
+            color: active ? colors.goldSoft : Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: active ? colors.gold : colors.borderSoft),
+          ),
+          child: Text(icon, style: TextStyle(fontSize: 14, color: active ? colors.gold : colors.textMuted)),
+        ),
+      );
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: colors.card,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: colors.borderSoft),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('توزيع البطاقات حسب المصرف', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: colors.text)),
+              Row(children: [toggleBtn('pie', '🥧'), const SizedBox(width: 6), toggleBtn('bar', '📊')]),
+            ],
+          ),
+          const SizedBox(height: 14),
+          if (chartMode == 'bar')
+            Column(
+              children: [
+                for (int i = 0; i < bankCounts.length; i++)
+                  Padding(
+                    padding: EdgeInsets.only(top: i == 0 ? 0 : 10),
+                    child: Row(
+                      children: [
+                        SizedBox(width: 26, child: Text('${bankCounts[i].value}', style: TextStyle(fontSize: 11, color: colors.textMuted))),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Stack(
+                            children: [
+                              Container(height: 8, decoration: BoxDecoration(color: colors.inputBg, borderRadius: BorderRadius.circular(4))),
+                              FractionallySizedBox(
+                                widthFactor: maxCount == 0 ? 0 : bankCounts[i].value / maxCount,
+                                child: Container(
+                                  height: 8,
+                                  decoration: BoxDecoration(color: _chartPalette[i % _chartPalette.length], borderRadius: BorderRadius.circular(4)),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        SizedBox(
+                          width: 90,
+                          child: Text(bankCounts[i].key,
+                              textAlign: TextAlign.right, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 11, color: colors.textSoft)),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            )
+          else
+            Column(
+              children: [
+                SizedBox(
+                  height: 160,
+                  child: Center(
+                    child: _DonutChart(
+                      values: [for (final e in bankCounts) e.value.toDouble()],
+                      colorsList: [for (int i = 0; i < bankCounts.length; i++) _chartPalette[i % _chartPalette.length]],
+                      centerText: '$totalCount',
+                      centerLabel: 'بطاقة',
+                      centerTextColor: colors.text,
+                      centerLabelColor: colors.textMuted,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Wrap(
+                  spacing: 14,
+                  runSpacing: 8,
+                  alignment: WrapAlignment.center,
+                  children: [
+                    for (int i = 0; i < bankCounts.length; i++)
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(width: 9, height: 9, decoration: BoxDecoration(color: _chartPalette[i % _chartPalette.length], shape: BoxShape.circle)),
+                          const SizedBox(width: 5),
+                          Text('${bankCounts[i].key} (${bankCounts[i].value})', style: TextStyle(fontSize: 11, color: colors.textSoft)),
+                        ],
+                      ),
+                  ],
+                ),
+              ],
+            ),
+        ],
+      ),
     );
   }
 
@@ -543,4 +686,72 @@ class _ClientsAndStatsTabState extends State<_ClientsAndStatsTab> {
       child: Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: text)),
     );
   }
+}
+
+class _DonutChart extends StatelessWidget {
+  final List<double> values;
+  final List<Color> colorsList;
+  final String centerText;
+  final String centerLabel;
+  final Color centerTextColor;
+  final Color centerLabelColor;
+
+  const _DonutChart({
+    required this.values,
+    required this.colorsList,
+    required this.centerText,
+    required this.centerLabel,
+    required this.centerTextColor,
+    required this.centerLabelColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 160,
+      height: 160,
+      child: CustomPaint(
+        painter: _DonutPainter(values: values, colorsList: colorsList),
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(centerText, style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: centerTextColor)),
+              Text(centerLabel, style: TextStyle(fontSize: 11, color: centerLabelColor)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DonutPainter extends CustomPainter {
+  final List<double> values;
+  final List<Color> colorsList;
+  const _DonutPainter({required this.values, required this.colorsList});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final total = values.fold<double>(0, (s, v) => s + v);
+    if (total <= 0) return;
+    const strokeWidth = 22.0;
+    final rect = Rect.fromLTWH(0, 0, size.width, size.height).deflate(strokeWidth / 2 + 2);
+    var startAngle = -math.pi / 2;
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
+      ..strokeCap = StrokeCap.butt;
+    for (var i = 0; i < values.length; i++) {
+      final sweep = (values[i] / total) * 2 * math.pi;
+      final gap = values.length > 1 ? 0.025 : 0.0;
+      paint.color = colorsList[i % colorsList.length];
+      canvas.drawArc(rect, startAngle, (sweep - gap).clamp(0.0, 2 * math.pi), false, paint);
+      startAngle += sweep;
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _DonutPainter oldDelegate) =>
+      oldDelegate.values != values || oldDelegate.colorsList != colorsList;
 }
