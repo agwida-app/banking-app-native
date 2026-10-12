@@ -9,6 +9,20 @@ import '../widgets/common.dart';
 
 String _fmtDate(DateTime d) => '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
+const _arMonths = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
+String _fmtDateHuman(DateTime d) => '${d.day} ${_arMonths[d.month - 1]}';
+
+const _categoryEmoji = {
+  'إيجار': '🏠',
+  'مطعم': '🍽️',
+  'تسوق': '🛍️',
+  'فواتير': '🧾',
+  'شراء بطاقة': '💳',
+  'صديق': '👤',
+  'ادخار': '🏦',
+  'أخرى': '📦',
+};
+
 class ExpensesScreen extends StatefulWidget {
   final bool embedded;
   const ExpensesScreen({super.key, this.embedded = false});
@@ -179,6 +193,61 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     );
   }
 
+  Widget _header(AppColors colors) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('💰 المصروفات', style: TextStyle(color: colors.text, fontSize: 19, fontWeight: FontWeight.w900)),
+              const SizedBox(height: 3),
+              Text('متابعة ما يُصرف ويُدّخر', style: TextStyle(color: colors.textMuted, fontSize: 12)),
+            ],
+          ),
+          InkWell(
+            borderRadius: BorderRadius.circular(24),
+            onTap: () => _openForm(),
+            child: Container(
+              width: 46,
+              height: 46,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [colors.gold, colors.gold.withOpacity(0.7)]),
+                boxShadow: [BoxShadow(color: colors.gold.withOpacity(0.35), blurRadius: 14, offset: const Offset(0, 6))],
+              ),
+              child: Icon(Icons.add, color: colors.bg, size: 26),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _summaryTile(AppColors colors, String label, String value, Color color) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 6),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.12),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: color.withOpacity(0.3)),
+        ),
+        child: Column(
+          children: [
+            Text(label, style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w600)),
+            const SizedBox(height: 4),
+            Text(value, style: TextStyle(color: color, fontSize: 16, fontWeight: FontWeight.w900)),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<void> _delete(Expense e) async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -222,25 +291,24 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
           return fk && fc;
         }).toList();
 
-        return Stack(
-          children: [
-            Column(
+        return Column(
               children: [
                 OfflineBanner(isOffline: isOffline),
+                _header(colors),
                 Padding(
-                  padding: const EdgeInsets.all(14),
+                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
                   child: Row(
                     children: [
-                      Expanded(child: StatCard(icon: '🔻', value: totalExpense.toStringAsFixed(0), label: 'إجمالي المصروفات', valueColor: const Color(0xFFE74C3C), colors: colors)),
+                      _summaryTile(colors, 'مصروفات', totalExpense.toStringAsFixed(0), const Color(0xFFE74C3C)),
                       const SizedBox(width: 10),
-                      Expanded(child: StatCard(icon: '🔺', value: totalIncome.toStringAsFixed(0), label: 'إجمالي الدخل', valueColor: const Color(0xFF2ECC71), colors: colors)),
+                      _summaryTile(colors, 'دخل', totalIncome.toStringAsFixed(0), const Color(0xFF2ECC71)),
                       const SizedBox(width: 10),
-                      Expanded(child: StatCard(icon: '💼', value: net.toStringAsFixed(0), label: 'الصافي', valueColor: net >= 0 ? colors.gold : const Color(0xFFE74C3C), colors: colors)),
+                      _summaryTile(colors, 'صافي', '${net >= 0 ? '+' : ''}${net.toStringAsFixed(0)}', net >= 0 ? colors.gold : const Color(0xFFE74C3C)),
                     ],
                   ),
                 ),
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -259,32 +327,29 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 10),
                 Expanded(
                   child: loading
                       ? Center(child: CircularProgressIndicator(color: colors.gold))
                       : filtered.isEmpty
-                          ? Center(child: Text('لا توجد حركات مالية بعد', style: TextStyle(color: colors.textMuted)))
+                          ? Center(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text('🗂️', style: TextStyle(fontSize: 34, color: colors.textMuted.withOpacity(0.6))),
+                                  const SizedBox(height: 8),
+                                  Text('لا توجد حركات مالية بعد', style: TextStyle(color: colors.textMuted)),
+                                ],
+                              ),
+                            )
                           : ListView.builder(
-                              padding: const EdgeInsets.fromLTRB(14, 0, 14, 90),
+                              padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
                               itemCount: filtered.length,
                               itemBuilder: (context, i) => _expenseCard(colors, filtered[i]),
                             ),
                 ),
               ],
-            ),
-            Positioned(
-              bottom: 16,
-              left: 16,
-              child: FloatingActionButton(
-                backgroundColor: colors.gold,
-                foregroundColor: colors.bg,
-                onPressed: () => _openForm(),
-                child: const Icon(Icons.add, size: 28),
-              ),
-            ),
-          ],
-        );
+            );
       },
     );
 
@@ -300,50 +365,69 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   Widget _expenseCard(AppColors colors, Expense e) {
     final isExpense = e.kind == ExpenseKind.expense;
     final color = isExpense ? const Color(0xFFE74C3C) : const Color(0xFF2ECC71);
+    final emoji = _categoryEmoji[e.category] ?? '📦';
+    final metaParts = [
+      if (e.person.isNotEmpty) (isExpense ? 'إلى ${e.person}' : 'من ${e.person}'),
+      _fmtDateHuman(e.date),
+    ];
+
     return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(color: colors.card, borderRadius: BorderRadius.circular(12), border: Border.all(color: colors.borderSoft)),
-      child: Row(
-        children: [
-          Container(
-            width: 42,
-            height: 42,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(color: color.withOpacity(0.1), shape: BoxShape.circle),
-            child: Text(isExpense ? '🔻' : '🔺'),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: colors.card,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: colors.borderSoft),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(colors.mode == 'dark' ? 0.18 : 0.05), blurRadius: 10, offset: const Offset(0, 4)),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: () => _openForm(existing: e),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Row(
               children: [
-                Row(
-                  children: [
-                    Expanded(child: Text(e.category, style: TextStyle(color: colors.text, fontWeight: FontWeight.w700, fontSize: 14))),
-                    Text('${isExpense ? '-' : '+'}${e.amount.toStringAsFixed(2)} د.ل',
-                        style: TextStyle(color: color, fontWeight: FontWeight.w900, fontSize: 14)),
-                  ],
+                Container(
+                  width: 42,
+                  height: 42,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(color: color.withOpacity(0.14), borderRadius: BorderRadius.circular(13)),
+                  child: Text(emoji, style: const TextStyle(fontSize: 18)),
                 ),
-                if (e.person.isNotEmpty)
-                  Text(isExpense ? '👤 أُعطيت لـ: ${e.person}' : '👤 من: ${e.person}', style: TextStyle(color: colors.textMuted, fontSize: 12)),
-                if (e.note.isNotEmpty) Text(e.note, style: TextStyle(color: colors.textSoft, fontSize: 12)),
-                Text(_fmtDate(e.date), style: TextStyle(color: colors.textMuted, fontSize: 11)),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(e.category, style: TextStyle(color: colors.text, fontWeight: FontWeight.w700, fontSize: 13.5)),
+                      const SizedBox(height: 2),
+                      Text(metaParts.join(' · '),
+                          style: TextStyle(color: colors.textMuted, fontSize: 11), maxLines: 1, overflow: TextOverflow.ellipsis),
+                      if (e.note.isNotEmpty) ...[
+                        const SizedBox(height: 2),
+                        Text(e.note, style: TextStyle(color: colors.textSoft, fontSize: 11), maxLines: 1, overflow: TextOverflow.ellipsis),
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text('${isExpense ? '-' : '+'}${e.amount.toStringAsFixed(0)}',
+                    style: TextStyle(color: color, fontWeight: FontWeight.w900, fontSize: 14)),
+                const SizedBox(width: 2),
+                IconButton(
+                  icon: Icon(Icons.delete_outline, size: 18, color: colors.textMuted),
+                  splashRadius: 18,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  onPressed: () => _delete(e),
+                ),
               ],
             ),
           ),
-          PopupMenuButton<String>(
-            icon: Icon(Icons.more_vert, color: colors.textMuted),
-            onSelected: (v) {
-              if (v == 'edit') _openForm(existing: e);
-              if (v == 'delete') _delete(e);
-            },
-            itemBuilder: (_) => const [
-              PopupMenuItem(value: 'edit', child: Text('✏️ تعديل')),
-              PopupMenuItem(value: 'delete', child: Text('🗑 حذف')),
-            ],
-          ),
-        ],
+        ),
       ),
     );
   }
