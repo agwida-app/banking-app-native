@@ -94,8 +94,6 @@ class _ClientsAndStatsTabState extends State<_ClientsAndStatsTab> {
   bool showFilters = false;
   String chartMode = 'bar';
 
-  final Map<String, TextEditingController> _noteCtrls = {};
-  final Map<String, bool> _noteSaving = {};
 
   List<Client> _applyFilters(List<Client> clients) {
     final q = search.toLowerCase().trim();
@@ -158,14 +156,6 @@ class _ClientsAndStatsTabState extends State<_ClientsAndStatsTab> {
     final file = File('${dir.path}/clients_export.csv');
     await file.writeAsString(csv, encoding: const SystemEncoding());
     await SharePlus.instance.share(ShareParams(files: [XFile(file.path)], subject: 'قائمة العملاء'));
-  }
-
-  @override
-  void dispose() {
-    for (final c in _noteCtrls.values) {
-      c.dispose();
-    }
-    super.dispose();
   }
 
   @override
@@ -596,111 +586,29 @@ class _ClientsAndStatsTabState extends State<_ClientsAndStatsTab> {
   }
 
   Widget _clientCard(AppColors colors, Client c) {
-    final noteCtrl = _noteCtrls.putIfAbsent(c.id!, () => TextEditingController(text: c.notes));
-    final changed = noteCtrl.text != c.notes;
-    final saving = _noteSaving[c.id] ?? false;
-
     return Opacity(
       opacity: c.isSold ? 0.6 : 1,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(color: colors.card, borderRadius: BorderRadius.circular(12), border: Border.all(color: colors.borderSoft)),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            GestureDetector(
-              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ClientDetailScreen(client: c))),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(child: Text(c.name, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: colors.text))),
-                      _statusBadge(c),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  Text(c.bankLabel, style: TextStyle(fontSize: 12, color: colors.textMuted)),
-                  Text(c.phone1, style: TextStyle(fontSize: 12, color: colors.textSoft)),
-                  if (c.amount.isNotEmpty)
-                    Text('${c.amountValue.toStringAsFixed(2)} ${c.currency}',
-                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: colors.gold)),
-                ],
-              ),
-            ),
-            const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(color: colors.inputBg, borderRadius: BorderRadius.circular(10), border: Border.all(color: colors.inputBorder)),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text('ملاحظات', style: TextStyle(fontSize: 11, color: colors.textMuted, fontWeight: FontWeight.w600)),
-                  TextField(
-                    controller: noteCtrl,
-                    maxLines: null,
-                    style: TextStyle(fontSize: 13, color: colors.text),
-                    textAlign: TextAlign.right,
-                    decoration: InputDecoration(
-                      isCollapsed: true,
-                      hintText: 'أضف ملاحظة...',
-                      hintStyle: TextStyle(color: colors.textMuted),
-                      border: InputBorder.none,
-                    ),
-                    onChanged: (_) => setState(() {}),
-                  ),
-                  if (changed)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8),
-                      child: SizedBox(
-                        width: double.infinity,
-                        child: FilledButton(
-                          style: FilledButton.styleFrom(backgroundColor: colors.gold, foregroundColor: colors.bg, padding: const EdgeInsets.symmetric(vertical: 8)),
-                          onPressed: saving
-                              ? null
-                              : () async {
-                                  setState(() => _noteSaving[c.id!] = true);
-                                  final user = FirebaseAuth.instance.currentUser!;
-                                  await FirebaseFirestore.instance.collection('clients').doc(c.id).update({
-                                    'notes': noteCtrl.text,
-                                    'updatedBy': user.email,
-                                    'updatedAt': FieldValue.serverTimestamp(),
-                                  });
-                                  if (mounted) setState(() => _noteSaving[c.id!] = false);
-                                },
-                          child: saving
-                              ? SizedBox(height: 14, width: 14, child: CircularProgressIndicator(strokeWidth: 2, color: colors.bg))
-                              : const Text('حفظ الملاحظة', style: TextStyle(fontSize: 12)),
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 8),
-            Row(
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ClientDetailScreen(client: c))),
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+            decoration: BoxDecoration(color: colors.card, borderRadius: BorderRadius.circular(14), border: Border.all(color: colors.borderSoft)),
+            child: Row(
               children: [
                 Expanded(
-                  child: OutlinedButton.icon(
-                    style: OutlinedButton.styleFrom(backgroundColor: colors.goldSoft, side: BorderSide(color: colors.borderSoft), padding: const EdgeInsets.symmetric(vertical: 6)),
-                    onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ClientFormScreen(existing: c))),
-                    icon: Icon(Icons.edit_outlined, size: 14, color: colors.gold),
-                    label: Text('تعديل', style: TextStyle(color: colors.gold, fontSize: 12)),
-                  ),
+                  child: Text(c.name, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: colors.text)),
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    style: OutlinedButton.styleFrom(backgroundColor: const Color(0x1AE74C3C), side: const BorderSide(color: Color(0x4DE74C3C)), padding: const EdgeInsets.symmetric(vertical: 6)),
-                    onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ClientDetailScreen(client: c))),
-                    icon: const Icon(Icons.delete_outline, size: 14, color: Color(0xFFE74C3C)),
-                    label: const Text('حذف', style: TextStyle(color: Color(0xFFE74C3C), fontSize: 12)),
-                  ),
-                ),
+                const SizedBox(width: 10),
+                _statusBadge(c),
+                const SizedBox(width: 6),
+                Icon(Icons.chevron_left, size: 18, color: colors.textMuted),
               ],
             ),
-          ],
+          ),
         ),
       ),
     );
