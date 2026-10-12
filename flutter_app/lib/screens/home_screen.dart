@@ -421,19 +421,21 @@ class _ClientsAndStatsTabState extends State<_ClientsAndStatsTab> {
                   ),
                 ),
                 const SizedBox(height: 14),
-                Wrap(
-                  spacing: 14,
-                  runSpacing: 8,
-                  alignment: WrapAlignment.center,
+                Column(
                   children: [
-                    for (int i = 0; i < bankCounts.length; i++)
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(width: 9, height: 9, decoration: BoxDecoration(color: _chartPalette[i % _chartPalette.length], shape: BoxShape.circle)),
-                          const SizedBox(width: 5),
-                          Text('${bankCounts[i].key} (${bankCounts[i].value})', style: TextStyle(fontSize: 11, color: colors.textSoft)),
-                        ],
+                    for (int row = 0; row < (bankCounts.length / 2).ceil(); row++)
+                      Padding(
+                        padding: EdgeInsets.only(top: row == 0 ? 0 : 10),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Expanded(child: _legendItem(colors, bankCounts, row * 2)),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: row * 2 + 1 < bankCounts.length ? _legendItem(colors, bankCounts, row * 2 + 1) : const SizedBox(),
+                            ),
+                          ],
+                        ),
                       ),
                   ],
                 ),
@@ -441,6 +443,20 @@ class _ClientsAndStatsTabState extends State<_ClientsAndStatsTab> {
             ),
         ],
       ),
+    );
+  }
+
+  Widget _legendItem(AppColors colors, List<MapEntry<String, int>> bankCounts, int i) {
+    return Row(
+      children: [
+        Container(width: 9, height: 9, decoration: BoxDecoration(color: _chartPalette[i % _chartPalette.length], shape: BoxShape.circle)),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Text(bankCounts[i].key, style: TextStyle(fontSize: 11.5, color: colors.textSoft), overflow: TextOverflow.ellipsis, maxLines: 1),
+        ),
+        const SizedBox(width: 6),
+        Text('${bankCounts[i].value}', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: colors.text)),
+      ],
     );
   }
 
