@@ -95,7 +95,7 @@ class _AppGateState extends State<AppGate> {
         final devices = Map<String, dynamic>.from(data['devices'] ?? {});
         final deviceEntry = {
           'uid': u.uid,
-          'email': u.email ?? u.phoneNumber ?? '',
+          'email': u.email ?? '',
           'lastSeen': DateTime.now().toIso8601String(),
           'type': _deviceType(),
         };

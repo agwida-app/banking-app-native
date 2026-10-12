@@ -147,10 +147,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget build(BuildContext context) {
     final colors = context.watch<ThemeController>().colors;
     final user = FirebaseAuth.instance.currentUser;
-    final hasPassword = user?.email != null;
-    // Phone accounts are linked to a synthetic internal email under the
-    // hood (see auth_screen.dart), so phoneNumber must take priority here.
-    final identityLabel = user?.phoneNumber ?? user?.email ?? '';
+    final identityLabel = user?.email ?? '';
 
     return Container(
       color: colors.bg,
@@ -170,7 +167,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             title: 'الملف الشخصي',
             icon: Icons.person_outline,
             children: [
-              Text(user?.phoneNumber != null ? 'رقم الجوال' : 'البريد الإلكتروني', style: TextStyle(fontSize: 12, color: colors.textSoft)),
+              Text('البريد الإلكتروني', style: TextStyle(fontSize: 12, color: colors.textSoft)),
               const SizedBox(height: 5),
               Container(
                 width: double.infinity,
@@ -184,19 +181,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
               PrimaryButton(label: 'حفظ الاسم', colors: colors, loading: savingName, onPressed: _saveName),
             ],
           ),
-          if (hasPassword)
-            _sectionCard(
-              colors,
-              title: 'تغيير كلمة المرور',
-              icon: Icons.lock_outline,
-              children: [
-                ThemedField(label: 'كلمة المرور الحالية', controller: currentPwCtrl, colors: colors, obscure: true),
-                ThemedField(label: 'كلمة المرور الجديدة', controller: newPwCtrl, colors: colors, obscure: true),
-                ThemedField(label: 'تأكيد كلمة المرور الجديدة', controller: confirmPwCtrl, colors: colors, obscure: true),
-                if (pwMsg != null) MessageBanner(text: pwMsg!, isError: pwMsgIsError),
-                PrimaryButton(label: 'تغيير كلمة المرور', colors: colors, loading: savingPassword, onPressed: _changePassword),
-              ],
-            ),
+          _sectionCard(
+            colors,
+            title: 'تغيير كلمة المرور',
+            icon: Icons.lock_outline,
+            children: [
+              ThemedField(label: 'كلمة المرور الحالية', controller: currentPwCtrl, colors: colors, obscure: true),
+              ThemedField(label: 'كلمة المرور الجديدة', controller: newPwCtrl, colors: colors, obscure: true),
+              ThemedField(label: 'تأكيد كلمة المرور الجديدة', controller: confirmPwCtrl, colors: colors, obscure: true),
+              if (pwMsg != null) MessageBanner(text: pwMsg!, isError: pwMsgIsError),
+              PrimaryButton(label: 'تغيير كلمة المرور', colors: colors, loading: savingPassword, onPressed: _changePassword),
+            ],
+          ),
           _sectionCard(
             colors,
             title: 'الدعم',

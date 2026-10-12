@@ -12,11 +12,8 @@ import 'auth_screen.dart' show whatsappUrl;
 const commissionPctDefault = 10;
 
 extension UserIdentity on User {
-  /// A human-readable identity for a user that may have signed up with
-  /// email or a phone number — never null, unlike [User.email]. Phone
-  /// accounts are linked to a synthetic internal email under the hood
-  /// (see auth_screen.dart), so phoneNumber must take priority here.
-  String get identity => phoneNumber ?? email ?? uid;
+  /// A human-readable identity for a user — never null, unlike [User.email].
+  String get identity => email ?? uid;
 }
 
 class ActivationScreen extends StatefulWidget {
@@ -128,7 +125,6 @@ class _ActivationScreenState extends State<ActivationScreen> {
         await userRef.set({
           'uid': user.uid,
           'email': user.email,
-          'phone': user.phoneNumber,
           'usedReferral': true,
           'referralCode': refTrimmed,
           'referralUsedAt': FieldValue.serverTimestamp(),
