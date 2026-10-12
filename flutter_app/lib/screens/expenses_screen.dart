@@ -212,40 +212,41 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   Widget _header(AppColors colors) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          Row(
             children: [
-              Row(
-                children: [
-                  Icon(Icons.account_balance_wallet_outlined, size: 20, color: colors.gold),
-                  const SizedBox(width: 6),
-                  Text('المصروفات', style: TextStyle(color: colors.text, fontSize: 19, fontWeight: FontWeight.w900)),
-                ],
-              ),
-              const SizedBox(height: 3),
-              Text('متابعة ما يُصرف ويُدّخر', style: TextStyle(color: colors.textMuted, fontSize: 12)),
+              Icon(Icons.account_balance_wallet_outlined, size: 20, color: colors.gold),
+              const SizedBox(width: 6),
+              Text('المصروفات', style: TextStyle(color: colors.text, fontSize: 19, fontWeight: FontWeight.w900)),
             ],
           ),
-          InkWell(
-            borderRadius: BorderRadius.circular(24),
-            onTap: () => _openForm(),
-            child: Container(
-              width: 46,
-              height: 46,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [colors.gold, colors.gold.withOpacity(0.7)]),
-                boxShadow: [BoxShadow(color: colors.gold.withOpacity(0.35), blurRadius: 14, offset: const Offset(0, 6))],
-              ),
-              child: Icon(Icons.add, color: colors.bg, size: 26),
-            ),
-          ),
+          const SizedBox(height: 3),
+          Text('متابعة ما يُصرف ويُدّخر', style: TextStyle(color: colors.textMuted, fontSize: 12)),
         ],
+      ),
+    );
+  }
+
+  Widget _addFab(AppColors colors) {
+    return Positioned(
+      bottom: 16,
+      left: 16,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(28),
+        onTap: () => _openForm(),
+        child: Container(
+          width: 56,
+          height: 56,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [colors.gold, colors.gold.withOpacity(0.7)]),
+            boxShadow: [BoxShadow(color: colors.gold.withOpacity(0.4), blurRadius: 16, offset: const Offset(0, 6))],
+          ),
+          child: Icon(Icons.add, color: colors.bg, size: 28),
+        ),
       ),
     );
   }
@@ -365,7 +366,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                               ),
                             )
                           : ListView.builder(
-                              padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+                              padding: const EdgeInsets.fromLTRB(16, 4, 16, 88),
                               itemCount: filtered.length,
                               itemBuilder: (context, i) => _expenseCard(colors, filtered[i]),
                             ),
@@ -375,12 +376,14 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
       },
     );
 
-    if (widget.embedded) return Container(color: colors.bg, child: body);
+    if (widget.embedded) {
+      return Container(color: colors.bg, child: Stack(children: [body, _addFab(colors)]));
+    }
 
     return Scaffold(
       backgroundColor: colors.bg,
       appBar: AppBar(backgroundColor: colors.card, foregroundColor: colors.gold, title: const Text('المصروفات')),
-      body: body,
+      body: Stack(children: [body, _addFab(colors)]),
     );
   }
 
