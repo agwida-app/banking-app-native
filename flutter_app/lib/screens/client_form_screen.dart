@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../models/client.dart';
 import '../theme/app_theme.dart';
 import '../widgets/common.dart';
+import 'activation_screen.dart' show UserIdentity;
 
 class ClientFormScreen extends StatefulWidget {
   final Client? existing;
@@ -102,14 +103,14 @@ class _ClientFormScreenState extends State<ClientFormScreen> {
       if (isEdit) {
         await col.doc(widget.existing!.id).update({
           ...data,
-          'updatedBy': user.email,
+          'updatedBy': user.identity,
           'updatedAt': FieldValue.serverTimestamp(),
         });
       } else {
         await col.add({
           ...data,
           'uid': user.uid,
-          'createdBy': user.email,
+          'createdBy': user.identity,
           'createdAt': FieldValue.serverTimestamp(),
         });
       }

@@ -17,19 +17,26 @@ class AuthScreen extends StatefulWidget {
 
 class _AuthScreenState extends State<AuthScreen> {
   String tab = 'login';
+  String method = 'email'; // 'email' | 'phone'
   bool resetMode = false;
   final nameCtrl = TextEditingController();
   final emailCtrl = TextEditingController();
   final passCtrl = TextEditingController();
+  final phoneCtrl = TextEditingController();
+  final otpCtrl = TextEditingController();
   String err = '';
   String ok = '';
   bool loading = false;
+  bool otpSent = false;
+  String? verificationId;
 
   @override
   void dispose() {
     nameCtrl.dispose();
     emailCtrl.dispose();
     passCtrl.dispose();
+    phoneCtrl.dispose();
+    otpCtrl.dispose();
     super.dispose();
   }
 
@@ -40,6 +47,96 @@ class _AuthScreenState extends State<AuthScreen> {
     'invalid-email': 'البريد غير صالح',
     'too-many-requests': 'محاولات كثيرة، حاول لاحقاً',
   };
+
+  static const _phoneErrorMessages = {
+    'invalid-phone-number': 'رقم الجوال غير صحيح',
+    'invalid-verification-code': 'رمز التحقق غير صحيح',
+    'session-expired': 'انتهت صلاحية الرمز، أعد الإرسال',
+    'too-many-requests': 'محاولات كثيرة، حاول لاحقاً',
+  };
+
+  String _toE164Libya(String local) {
+    var s = local.trim().replaceAll(RegExp(r'[^0-9]'), '');
+    if (s.startsWith('00218')) s = s.substring(5);
+    if (s.startsWith('218')) s = s.substring(3);
+    if (s.startsWith('0')) s = s.substring(1);
+    return '+218$s';
+  }
+
+  Future<void> _sendOtp() async {
+    if (tab == 'register' && nameCtrl.text.trim().isEmpty) {
+      setState(() => err = 'أدخل الاسم الكامل');
+      return;
+    }
+    if (phoneCtrl.text.trim().isEmpty) {
+      setState(() => err = 'أدخل رقم الجوال');
+      return;
+    }
+    setState(() {
+      err = '';
+      ok = '';
+      loading = true;
+    });
+    try {
+      await FirebaseAuth.instance.verifyPhoneNumber(
+        phoneNumber: _toE164Libya(phoneCtrl.text),
+        timeout: const Duration(seconds: 60),
+        verificationCompleted: (credential) async {
+          try {
+            final userCred = await FirebaseAuth.instance.signInWithCredential(credential);
+            if (tab == 'register' && nameCtrl.text.trim().isNotEmpty) {
+              await userCred.user?.updateDisplayName(nameCtrl.text.trim());
+            }
+          } catch (_) {}
+          if (mounted) setState(() => loading = false);
+        },
+        verificationFailed: (e) {
+          if (mounted) {
+            setState(() {
+              err = _phoneErrorMessages[e.code] ?? e.message ?? 'تعذر إرسال رمز التحقق';
+              loading = false;
+            });
+          }
+        },
+        codeSent: (verId, resendToken) {
+          if (mounted) {
+            setState(() {
+              verificationId = verId;
+              otpSent = true;
+              loading = false;
+            });
+          }
+        },
+        codeAutoRetrievalTimeout: (verId) => verificationId = verId,
+      );
+    } catch (e) {
+      setState(() {
+        err = 'تعذر إرسال رمز التحقق';
+        loading = false;
+      });
+    }
+  }
+
+  Future<void> _verifyOtp() async {
+    if (otpCtrl.text.trim().length < 6 || verificationId == null) {
+      setState(() => err = 'أدخل رمز التحقق المكوّن من 6 أرقام');
+      return;
+    }
+    setState(() {
+      err = '';
+      loading = true;
+    });
+    try {
+      final credential = PhoneAuthProvider.credential(verificationId: verificationId!, smsCode: otpCtrl.text.trim());
+      final userCred = await FirebaseAuth.instance.signInWithCredential(credential);
+      if (tab == 'register' && nameCtrl.text.trim().isNotEmpty) {
+        await userCred.user?.updateDisplayName(nameCtrl.text.trim());
+      }
+    } on FirebaseAuthException catch (e) {
+      setState(() => err = _phoneErrorMessages[e.code] ?? 'رمز غير صحيح');
+    }
+    if (mounted) setState(() => loading = false);
+  }
 
   Future<void> _submit() async {
     setState(() {
@@ -188,35 +285,112 @@ class _AuthScreenState extends State<AuthScreen> {
             ],
           ),
         ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            _methodButton('email', 'البريد الإلكتروني', Icons.email_outlined, colors),
+            const SizedBox(width: 8),
+            _methodButton('phone', 'رقم الجوال', Icons.phone_iphone, colors),
+          ],
+        ),
         const SizedBox(height: 16),
         if (err.isNotEmpty) MessageBanner(text: err),
         if (ok.isNotEmpty) MessageBanner(text: ok, isError: false),
         if (tab == 'register') ThemedField(label: 'الاسم الكامل', controller: nameCtrl, colors: colors, hint: 'اسمك الكامل'),
-        ThemedField(
-          label: 'البريد الإلكتروني',
-          controller: emailCtrl,
-          colors: colors,
-          hint: 'example@mail.com',
-          keyboardType: TextInputType.emailAddress,
-        ),
-        ThemedField(label: 'كلمة المرور', controller: passCtrl, colors: colors, hint: '••••••••', obscure: true),
-        const SizedBox(height: 4),
-        PrimaryButton(
-          label: tab == 'login' ? 'تسجيل الدخول' : 'إنشاء حساب',
-          onPressed: _submit,
-          loading: loading,
-          colors: colors,
-        ),
-        if (tab == 'login')
-          TextButton(
-            onPressed: () => setState(() {
-              resetMode = true;
-              err = '';
-            }),
-            child: Text('نسيت كلمة المرور؟',
-                style: TextStyle(color: colors.gold, fontSize: 12, decoration: TextDecoration.underline)),
+        if (method == 'email') ...[
+          ThemedField(
+            label: 'البريد الإلكتروني',
+            controller: emailCtrl,
+            colors: colors,
+            hint: 'example@mail.com',
+            keyboardType: TextInputType.emailAddress,
           ),
+          ThemedField(label: 'كلمة المرور', controller: passCtrl, colors: colors, hint: '••••••••', obscure: true),
+          const SizedBox(height: 4),
+          PrimaryButton(
+            label: tab == 'login' ? 'تسجيل الدخول' : 'إنشاء حساب',
+            onPressed: _submit,
+            loading: loading,
+            colors: colors,
+          ),
+          if (tab == 'login')
+            TextButton(
+              onPressed: () => setState(() {
+                resetMode = true;
+                err = '';
+              }),
+              child: Text('نسيت كلمة المرور؟',
+                  style: TextStyle(color: colors.gold, fontSize: 12, decoration: TextDecoration.underline)),
+            ),
+        ] else ...[
+          if (!otpSent) ...[
+            ThemedField(
+              label: 'رقم الجوال',
+              controller: phoneCtrl,
+              colors: colors,
+              hint: '091xxxxxxx',
+              keyboardType: TextInputType.phone,
+            ),
+            const SizedBox(height: 4),
+            PrimaryButton(label: 'إرسال رمز التحقق', onPressed: _sendOtp, loading: loading, colors: colors),
+          ] else ...[
+            Text('أُرسل رمز تحقق مكوّن من 6 أرقام إلى ${phoneCtrl.text}',
+                style: TextStyle(fontSize: 12, color: colors.textMuted), textAlign: TextAlign.center),
+            const SizedBox(height: 10),
+            ThemedField(
+              label: 'رمز التحقق',
+              controller: otpCtrl,
+              colors: colors,
+              hint: '••••••',
+              keyboardType: TextInputType.number,
+            ),
+            const SizedBox(height: 4),
+            PrimaryButton(
+              label: tab == 'login' ? 'تسجيل الدخول' : 'إنشاء حساب',
+              onPressed: _verifyOtp,
+              loading: loading,
+              colors: colors,
+            ),
+            TextButton(
+              onPressed: () => setState(() {
+                otpSent = false;
+                otpCtrl.clear();
+                err = '';
+              }),
+              child: Text('تغيير رقم الجوال', style: TextStyle(color: colors.gold, fontSize: 12)),
+            ),
+          ],
+        ],
       ],
+    );
+  }
+
+  Widget _methodButton(String value, String label, IconData icon, AppColors colors) {
+    final isSel = method == value;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => setState(() {
+          method = value;
+          err = '';
+          otpSent = false;
+        }),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          decoration: BoxDecoration(
+            color: isSel ? colors.goldSoft : Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: isSel ? colors.gold : colors.inputBorder),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 16, color: isSel ? colors.gold : colors.textMuted),
+              const SizedBox(height: 3),
+              Text(label, style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: isSel ? colors.gold : colors.textMuted)),
+            ],
+          ),
+        ),
+      ),
     );
   }
 

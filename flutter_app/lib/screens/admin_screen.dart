@@ -760,7 +760,7 @@ class _AffiliatesTabState extends State<_AffiliatesTab> {
                       'amount': amount,
                       'note': noteCtrl.text,
                       'date': dateCtrl.text,
-                      'paidBy': FirebaseAuth.instance.currentUser!.email,
+                      'paidBy': FirebaseAuth.instance.currentUser!.email ?? FirebaseAuth.instance.currentUser!.phoneNumber,
                       'createdAt': FieldValue.serverTimestamp(),
                     });
                     await FirebaseFirestore.instance.collection('affiliates').doc(aff.id).update({'totalPaid': aff.totalPaid + amount});

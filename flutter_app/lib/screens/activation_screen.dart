@@ -11,6 +11,12 @@ import 'auth_screen.dart' show whatsappUrl;
 
 const commissionPctDefault = 10;
 
+extension UserIdentity on User {
+  /// A human-readable identity for a user that may have signed up with
+  /// email or a phone number — never null, unlike [User.email].
+  String get identity => email ?? phoneNumber ?? uid;
+}
+
 class ActivationScreen extends StatefulWidget {
   final User user;
   final String subStatus;
@@ -108,7 +114,7 @@ class _ActivationScreenState extends State<ActivationScreen> {
         if (commAmount != null) {
           await db.collection('affiliates').doc(affSnap.id).collection('payments').add({
             'amount': commAmount,
-            'note': 'عمولة تلقائية — ${user.email}',
+            'note': 'عمولة تلقائية — ${user.identity}',
             'date': DateTime.now().toIso8601String().split('T').first,
             'paidBy': 'تلقائي',
             'isAuto': true,
@@ -120,6 +126,7 @@ class _ActivationScreenState extends State<ActivationScreen> {
         await userRef.set({
           'uid': user.uid,
           'email': user.email,
+          'phone': user.phoneNumber,
           'usedReferral': true,
           'referralCode': refTrimmed,
           'referralUsedAt': FieldValue.serverTimestamp(),
@@ -131,7 +138,7 @@ class _ActivationScreenState extends State<ActivationScreen> {
         await ref.update({
           'usedBy': user.uid,
           'usedAt': FieldValue.serverTimestamp(),
-          'usedByEmail': user.email,
+          'usedByEmail': user.identity,
           'expiresAt': Timestamp.fromDate(newExp),
           'planLabel': '${data['planLabel'] ?? ''} + شهر مجاني',
         });
@@ -140,7 +147,7 @@ class _ActivationScreenState extends State<ActivationScreen> {
         await ref.update({
           'usedBy': user.uid,
           'usedAt': FieldValue.serverTimestamp(),
-          'usedByEmail': user.email,
+          'usedByEmail': user.identity,
         });
         _showMsg('تم التفعيل', 'مرحباً بك في إدارة بطاقاتك!');
       }
@@ -169,7 +176,7 @@ class _ActivationScreenState extends State<ActivationScreen> {
                     const SizedBox(height: 12),
                     Text('تفعيل الاشتراك', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: colors.text)),
                     const SizedBox(height: 4),
-                    Text(widget.user.email ?? '', style: TextStyle(fontSize: 13, color: colors.textMuted)),
+                    Text(widget.user.identity, style: TextStyle(fontSize: 13, color: colors.textMuted)),
                     const SizedBox(height: 20),
                     if (widget.subStatus == 'expired') const MessageBanner(text: 'انتهى اشتراكك — تواصل مع المسؤول للتجديد'),
                     Container(
