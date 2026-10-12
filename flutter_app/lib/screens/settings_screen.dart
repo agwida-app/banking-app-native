@@ -148,7 +148,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final colors = context.watch<ThemeController>().colors;
     final user = FirebaseAuth.instance.currentUser;
     final hasPassword = user?.email != null;
-    final identityLabel = user?.email ?? user?.phoneNumber ?? '';
+    // Phone accounts are linked to a synthetic internal email under the
+    // hood (see auth_screen.dart), so phoneNumber must take priority here.
+    final identityLabel = user?.phoneNumber ?? user?.email ?? '';
 
     return Container(
       color: colors.bg,
@@ -168,7 +170,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             title: 'الملف الشخصي',
             icon: Icons.person_outline,
             children: [
-              Text(hasPassword ? 'البريد الإلكتروني' : 'رقم الجوال', style: TextStyle(fontSize: 12, color: colors.textSoft)),
+              Text(user?.phoneNumber != null ? 'رقم الجوال' : 'البريد الإلكتروني', style: TextStyle(fontSize: 12, color: colors.textSoft)),
               const SizedBox(height: 5),
               Container(
                 width: double.infinity,

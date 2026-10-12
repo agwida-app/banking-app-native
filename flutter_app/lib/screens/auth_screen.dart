@@ -8,6 +8,13 @@ import '../widgets/common.dart';
 
 const whatsappUrl = 'https://wa.me/218945888844';
 
+/// Firebase phone auth has no concept of a password, so a phone+password
+/// account is really an email/password account under the hood, keyed by a
+/// synthetic email derived from the phone number. The phone-auth OTP is
+/// used only once, during registration (and password reset), to prove the
+/// user owns the number before that password credential is linked/used.
+String _phoneToSyntheticEmail(String e164Phone) => '${e164Phone.replaceAll('+', '')}@phone.bankingapp.internal';
+
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
 
@@ -19,11 +26,18 @@ class _AuthScreenState extends State<AuthScreen> {
   String tab = 'login';
   String method = 'email'; // 'email' | 'phone'
   bool resetMode = false;
+  String resetMethod = 'email'; // 'email' | 'phone'
+  String resetStep = 'request'; // 'request' | 'otp' | 'newPassword' (phone reset only)
+
   final nameCtrl = TextEditingController();
   final emailCtrl = TextEditingController();
   final passCtrl = TextEditingController();
+  final confirmPassCtrl = TextEditingController();
   final phoneCtrl = TextEditingController();
   final otpCtrl = TextEditingController();
+  final newPassCtrl = TextEditingController();
+  final confirmNewPassCtrl = TextEditingController();
+
   String err = '';
   String ok = '';
   bool loading = false;
@@ -35,8 +49,11 @@ class _AuthScreenState extends State<AuthScreen> {
     nameCtrl.dispose();
     emailCtrl.dispose();
     passCtrl.dispose();
+    confirmPassCtrl.dispose();
     phoneCtrl.dispose();
     otpCtrl.dispose();
+    newPassCtrl.dispose();
+    confirmNewPassCtrl.dispose();
     super.dispose();
   }
 
@@ -48,11 +65,20 @@ class _AuthScreenState extends State<AuthScreen> {
     'too-many-requests': 'محاولات كثيرة، حاول لاحقاً',
   };
 
+  static const _phoneLoginErrorMessages = {
+    'invalid-credential': 'رقم الجوال أو كلمة المرور غير صحيحة',
+    'user-not-found': 'رقم الجوال أو كلمة المرور غير صحيحة',
+    'wrong-password': 'رقم الجوال أو كلمة المرور غير صحيحة',
+    'too-many-requests': 'محاولات كثيرة، حاول لاحقاً',
+  };
+
   static const _phoneErrorMessages = {
     'invalid-phone-number': 'رقم الجوال غير صحيح',
     'invalid-verification-code': 'رمز التحقق غير صحيح',
     'session-expired': 'انتهت صلاحية الرمز، أعد الإرسال',
     'too-many-requests': 'محاولات كثيرة، حاول لاحقاً',
+    'credential-already-in-use': 'هذا الرقم مسجل مسبقاً',
+    'provider-already-linked': 'هذا الرقم مسجل مسبقاً',
   };
 
   String _toE164Libya(String local) {
@@ -61,81 +87,6 @@ class _AuthScreenState extends State<AuthScreen> {
     if (s.startsWith('218')) s = s.substring(3);
     if (s.startsWith('0')) s = s.substring(1);
     return '+218$s';
-  }
-
-  Future<void> _sendOtp() async {
-    if (tab == 'register' && nameCtrl.text.trim().isEmpty) {
-      setState(() => err = 'أدخل الاسم الكامل');
-      return;
-    }
-    if (phoneCtrl.text.trim().isEmpty) {
-      setState(() => err = 'أدخل رقم الجوال');
-      return;
-    }
-    setState(() {
-      err = '';
-      ok = '';
-      loading = true;
-    });
-    try {
-      await FirebaseAuth.instance.verifyPhoneNumber(
-        phoneNumber: _toE164Libya(phoneCtrl.text),
-        timeout: const Duration(seconds: 60),
-        verificationCompleted: (credential) async {
-          try {
-            final userCred = await FirebaseAuth.instance.signInWithCredential(credential);
-            if (tab == 'register' && nameCtrl.text.trim().isNotEmpty) {
-              await userCred.user?.updateDisplayName(nameCtrl.text.trim());
-            }
-          } catch (_) {}
-          if (mounted) setState(() => loading = false);
-        },
-        verificationFailed: (e) {
-          if (mounted) {
-            setState(() {
-              err = _phoneErrorMessages[e.code] ?? e.message ?? 'تعذر إرسال رمز التحقق';
-              loading = false;
-            });
-          }
-        },
-        codeSent: (verId, resendToken) {
-          if (mounted) {
-            setState(() {
-              verificationId = verId;
-              otpSent = true;
-              loading = false;
-            });
-          }
-        },
-        codeAutoRetrievalTimeout: (verId) => verificationId = verId,
-      );
-    } catch (e) {
-      setState(() {
-        err = 'تعذر إرسال رمز التحقق';
-        loading = false;
-      });
-    }
-  }
-
-  Future<void> _verifyOtp() async {
-    if (otpCtrl.text.trim().length < 6 || verificationId == null) {
-      setState(() => err = 'أدخل رمز التحقق المكوّن من 6 أرقام');
-      return;
-    }
-    setState(() {
-      err = '';
-      loading = true;
-    });
-    try {
-      final credential = PhoneAuthProvider.credential(verificationId: verificationId!, smsCode: otpCtrl.text.trim());
-      final userCred = await FirebaseAuth.instance.signInWithCredential(credential);
-      if (tab == 'register' && nameCtrl.text.trim().isNotEmpty) {
-        await userCred.user?.updateDisplayName(nameCtrl.text.trim());
-      }
-    } on FirebaseAuthException catch (e) {
-      setState(() => err = _phoneErrorMessages[e.code] ?? 'رمز غير صحيح');
-    }
-    if (mounted) setState(() => loading = false);
   }
 
   Future<void> _submit() async {
@@ -180,7 +131,116 @@ class _AuthScreenState extends State<AuthScreen> {
     if (mounted) setState(() => loading = false);
   }
 
-  Future<void> _submitReset() async {
+  Future<void> _loginPhone() async {
+    if (phoneCtrl.text.trim().isEmpty || passCtrl.text.isEmpty) {
+      setState(() => err = 'يرجى ملء جميع الحقول');
+      return;
+    }
+    setState(() {
+      err = '';
+      ok = '';
+      loading = true;
+    });
+    try {
+      await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: _phoneToSyntheticEmail(_toE164Libya(phoneCtrl.text)),
+        password: passCtrl.text,
+      );
+    } on FirebaseAuthException catch (e) {
+      setState(() => err = _phoneLoginErrorMessages[e.code] ?? 'رقم الجوال أو كلمة المرور غير صحيحة');
+    }
+    if (mounted) setState(() => loading = false);
+  }
+
+  Future<void> _completePhoneRegister(PhoneAuthCredential credential) async {
+    try {
+      final userCred = await FirebaseAuth.instance.signInWithCredential(credential);
+      final isNewUser = userCred.additionalUserInfo?.isNewUser ?? true;
+      if (!isNewUser) {
+        await FirebaseAuth.instance.signOut();
+        if (mounted) setState(() => err = 'هذا الرقم مسجل مسبقاً، جرّب تسجيل الدخول');
+        return;
+      }
+      final email = _phoneToSyntheticEmail(_toE164Libya(phoneCtrl.text));
+      await userCred.user!.linkWithCredential(EmailAuthProvider.credential(email: email, password: passCtrl.text));
+      await userCred.user!.updateDisplayName(nameCtrl.text.trim());
+    } on FirebaseAuthException catch (e) {
+      if (mounted) setState(() => err = _phoneErrorMessages[e.code] ?? 'تعذر إكمال التسجيل');
+    }
+  }
+
+  Future<void> _sendRegisterOtp() async {
+    if (nameCtrl.text.trim().isEmpty) {
+      setState(() => err = 'أدخل الاسم الكامل');
+      return;
+    }
+    if (phoneCtrl.text.trim().isEmpty) {
+      setState(() => err = 'أدخل رقم الجوال');
+      return;
+    }
+    if (passCtrl.text.length < 6) {
+      setState(() => err = 'كلمة المرور قصيرة (6+ أحرف)');
+      return;
+    }
+    if (passCtrl.text != confirmPassCtrl.text) {
+      setState(() => err = 'كلمتا المرور غير متطابقتان');
+      return;
+    }
+    setState(() {
+      err = '';
+      ok = '';
+      loading = true;
+    });
+    try {
+      await FirebaseAuth.instance.verifyPhoneNumber(
+        phoneNumber: _toE164Libya(phoneCtrl.text),
+        timeout: const Duration(seconds: 60),
+        verificationCompleted: (credential) async {
+          await _completePhoneRegister(credential);
+          if (mounted) setState(() => loading = false);
+        },
+        verificationFailed: (e) {
+          if (mounted) {
+            setState(() {
+              err = _phoneErrorMessages[e.code] ?? e.message ?? 'تعذر إرسال رمز التحقق';
+              loading = false;
+            });
+          }
+        },
+        codeSent: (verId, resendToken) {
+          if (mounted) {
+            setState(() {
+              verificationId = verId;
+              otpSent = true;
+              loading = false;
+            });
+          }
+        },
+        codeAutoRetrievalTimeout: (verId) => verificationId = verId,
+      );
+    } catch (e) {
+      setState(() {
+        err = 'تعذر إرسال رمز التحقق';
+        loading = false;
+      });
+    }
+  }
+
+  Future<void> _verifyRegisterOtp() async {
+    if (otpCtrl.text.trim().length < 6 || verificationId == null) {
+      setState(() => err = 'أدخل رمز التحقق المكوّن من 6 أرقام');
+      return;
+    }
+    setState(() {
+      err = '';
+      loading = true;
+    });
+    final credential = PhoneAuthProvider.credential(verificationId: verificationId!, smsCode: otpCtrl.text.trim());
+    await _completePhoneRegister(credential);
+    if (mounted) setState(() => loading = false);
+  }
+
+  Future<void> _submitResetEmail() async {
     setState(() {
       err = '';
       ok = '';
@@ -201,6 +261,114 @@ class _AuthScreenState extends State<AuthScreen> {
       });
     } catch (_) {
       setState(() => err = 'البريد غير مسجل');
+    }
+    if (mounted) setState(() => loading = false);
+  }
+
+  Future<void> _completeResetOtp(PhoneAuthCredential credential) async {
+    try {
+      final userCred = await FirebaseAuth.instance.signInWithCredential(credential);
+      final isNewUser = userCred.additionalUserInfo?.isNewUser ?? true;
+      if (isNewUser) {
+        await userCred.user?.delete();
+        if (mounted) setState(() => err = 'هذا الرقم غير مسجل');
+        return;
+      }
+      if (mounted) {
+        setState(() {
+          resetStep = 'newPassword';
+          err = '';
+        });
+      }
+    } on FirebaseAuthException catch (e) {
+      if (mounted) setState(() => err = _phoneErrorMessages[e.code] ?? 'رمز غير صحيح');
+    }
+  }
+
+  Future<void> _sendResetOtp() async {
+    if (phoneCtrl.text.trim().isEmpty) {
+      setState(() => err = 'أدخل رقم الجوال');
+      return;
+    }
+    setState(() {
+      err = '';
+      ok = '';
+      loading = true;
+    });
+    try {
+      await FirebaseAuth.instance.verifyPhoneNumber(
+        phoneNumber: _toE164Libya(phoneCtrl.text),
+        timeout: const Duration(seconds: 60),
+        verificationCompleted: (credential) async {
+          await _completeResetOtp(credential);
+          if (mounted) setState(() => loading = false);
+        },
+        verificationFailed: (e) {
+          if (mounted) {
+            setState(() {
+              err = _phoneErrorMessages[e.code] ?? e.message ?? 'تعذر إرسال رمز التحقق';
+              loading = false;
+            });
+          }
+        },
+        codeSent: (verId, resendToken) {
+          if (mounted) {
+            setState(() {
+              verificationId = verId;
+              resetStep = 'otp';
+              loading = false;
+            });
+          }
+        },
+        codeAutoRetrievalTimeout: (verId) => verificationId = verId,
+      );
+    } catch (e) {
+      setState(() {
+        err = 'تعذر إرسال رمز التحقق';
+        loading = false;
+      });
+    }
+  }
+
+  Future<void> _verifyResetOtp() async {
+    if (otpCtrl.text.trim().length < 6 || verificationId == null) {
+      setState(() => err = 'أدخل رمز التحقق المكوّن من 6 أرقام');
+      return;
+    }
+    setState(() {
+      err = '';
+      loading = true;
+    });
+    final credential = PhoneAuthProvider.credential(verificationId: verificationId!, smsCode: otpCtrl.text.trim());
+    await _completeResetOtp(credential);
+    if (mounted) setState(() => loading = false);
+  }
+
+  Future<void> _setNewPasswordAfterReset() async {
+    if (newPassCtrl.text.length < 6) {
+      setState(() => err = 'كلمة المرور قصيرة (6+ أحرف)');
+      return;
+    }
+    if (newPassCtrl.text != confirmNewPassCtrl.text) {
+      setState(() => err = 'كلمتا المرور غير متطابقتان');
+      return;
+    }
+    setState(() {
+      err = '';
+      loading = true;
+    });
+    try {
+      await FirebaseAuth.instance.currentUser!.updatePassword(newPassCtrl.text);
+      setState(() {
+        ok = 'تم تغيير كلمة المرور وتسجيل الدخول';
+        resetMode = false;
+        resetStep = 'request';
+        otpCtrl.clear();
+        newPassCtrl.clear();
+        confirmNewPassCtrl.clear();
+      });
+    } on FirebaseAuthException catch (e) {
+      setState(() => err = e.message ?? 'حدث خطأ');
     }
     if (mounted) setState(() => loading = false);
   }
@@ -317,11 +485,36 @@ class _AuthScreenState extends State<AuthScreen> {
             TextButton(
               onPressed: () => setState(() {
                 resetMode = true;
+                resetMethod = 'email';
+                resetStep = 'request';
                 err = '';
+                ok = '';
               }),
               child: Text('نسيت كلمة المرور؟',
                   style: TextStyle(color: colors.gold, fontSize: 12, decoration: TextDecoration.underline)),
             ),
+        ] else if (tab == 'login') ...[
+          ThemedField(
+            label: 'رقم الجوال',
+            controller: phoneCtrl,
+            colors: colors,
+            hint: '091xxxxxxx',
+            keyboardType: TextInputType.phone,
+          ),
+          ThemedField(label: 'كلمة المرور', controller: passCtrl, colors: colors, hint: '••••••••', obscure: true),
+          const SizedBox(height: 4),
+          PrimaryButton(label: 'تسجيل الدخول', onPressed: _loginPhone, loading: loading, colors: colors),
+          TextButton(
+            onPressed: () => setState(() {
+              resetMode = true;
+              resetMethod = 'phone';
+              resetStep = 'request';
+              err = '';
+              ok = '';
+            }),
+            child: Text('نسيت كلمة المرور؟',
+                style: TextStyle(color: colors.gold, fontSize: 12, decoration: TextDecoration.underline)),
+          ),
         ] else ...[
           if (!otpSent) ...[
             ThemedField(
@@ -331,8 +524,16 @@ class _AuthScreenState extends State<AuthScreen> {
               hint: '091xxxxxxx',
               keyboardType: TextInputType.phone,
             ),
+            ThemedField(label: 'كلمة المرور', controller: passCtrl, colors: colors, hint: '••••••••', obscure: true),
+            ThemedField(
+              label: 'تأكيد كلمة المرور',
+              controller: confirmPassCtrl,
+              colors: colors,
+              hint: '••••••••',
+              obscure: true,
+            ),
             const SizedBox(height: 4),
-            PrimaryButton(label: 'إرسال رمز التحقق', onPressed: _sendOtp, loading: loading, colors: colors),
+            PrimaryButton(label: 'إرسال رمز التحقق', onPressed: _sendRegisterOtp, loading: loading, colors: colors),
           ] else ...[
             Text('أُرسل رمز تحقق مكوّن من 6 أرقام إلى ${phoneCtrl.text}',
                 style: TextStyle(fontSize: 12, color: colors.textMuted), textAlign: TextAlign.center),
@@ -345,12 +546,7 @@ class _AuthScreenState extends State<AuthScreen> {
               keyboardType: TextInputType.number,
             ),
             const SizedBox(height: 4),
-            PrimaryButton(
-              label: tab == 'login' ? 'تسجيل الدخول' : 'إنشاء حساب',
-              onPressed: _verifyOtp,
-              loading: loading,
-              colors: colors,
-            ),
+            PrimaryButton(label: 'تأكيد وإنشاء الحساب', onPressed: _verifyRegisterOtp, loading: loading, colors: colors),
             TextButton(
               onPressed: () => setState(() {
                 otpSent = false;
@@ -394,28 +590,101 @@ class _AuthScreenState extends State<AuthScreen> {
     );
   }
 
+  Widget _resetMethodButton(String value, String label, AppColors colors) {
+    final isSel = resetMethod == value;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => setState(() {
+          resetMethod = value;
+          err = '';
+          ok = '';
+        }),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          decoration: BoxDecoration(
+            color: isSel ? colors.goldSoft : Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: isSel ? colors.gold : colors.inputBorder),
+          ),
+          alignment: Alignment.center,
+          child: Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: isSel ? colors.gold : colors.textMuted)),
+        ),
+      ),
+    );
+  }
+
   Widget _buildReset(AppColors colors) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text('إعادة تعيين كلمة المرور', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: colors.gold)),
         const SizedBox(height: 4),
-        Text('سنرسل رابطاً لبريدك الإلكتروني', style: TextStyle(fontSize: 12, color: colors.textMuted)),
-        const SizedBox(height: 16),
+        Text(
+          resetMethod == 'email' ? 'سنرسل رابطاً لبريدك الإلكتروني' : 'سنرسل رمز تحقق إلى رقم جوالك',
+          style: TextStyle(fontSize: 12, color: colors.textMuted),
+        ),
+        const SizedBox(height: 12),
+        if (resetStep == 'request')
+          Row(
+            children: [
+              _resetMethodButton('email', 'البريد الإلكتروني', colors),
+              const SizedBox(width: 8),
+              _resetMethodButton('phone', 'رقم الجوال', colors),
+            ],
+          ),
+        const SizedBox(height: 12),
         if (err.isNotEmpty) MessageBanner(text: err),
         if (ok.isNotEmpty) MessageBanner(text: ok, isError: false),
-        ThemedField(
-          label: 'البريد الإلكتروني',
-          controller: emailCtrl,
-          colors: colors,
-          hint: 'example@mail.com',
-          keyboardType: TextInputType.emailAddress,
-        ),
-        PrimaryButton(label: 'إرسال', onPressed: _submitReset, loading: loading, colors: colors),
+        if (resetMethod == 'email') ...[
+          ThemedField(
+            label: 'البريد الإلكتروني',
+            controller: emailCtrl,
+            colors: colors,
+            hint: 'example@mail.com',
+            keyboardType: TextInputType.emailAddress,
+          ),
+          PrimaryButton(label: 'إرسال', onPressed: _submitResetEmail, loading: loading, colors: colors),
+        ] else if (resetStep == 'request') ...[
+          ThemedField(
+            label: 'رقم الجوال',
+            controller: phoneCtrl,
+            colors: colors,
+            hint: '091xxxxxxx',
+            keyboardType: TextInputType.phone,
+          ),
+          PrimaryButton(label: 'إرسال رمز التحقق', onPressed: _sendResetOtp, loading: loading, colors: colors),
+        ] else if (resetStep == 'otp') ...[
+          Text('أُرسل رمز تحقق مكوّن من 6 أرقام إلى ${phoneCtrl.text}',
+              style: TextStyle(fontSize: 12, color: colors.textMuted), textAlign: TextAlign.center),
+          const SizedBox(height: 10),
+          ThemedField(
+            label: 'رمز التحقق',
+            controller: otpCtrl,
+            colors: colors,
+            hint: '••••••',
+            keyboardType: TextInputType.number,
+          ),
+          const SizedBox(height: 4),
+          PrimaryButton(label: 'تأكيد', onPressed: _verifyResetOtp, loading: loading, colors: colors),
+        ] else ...[
+          ThemedField(label: 'كلمة المرور الجديدة', controller: newPassCtrl, colors: colors, hint: '••••••••', obscure: true),
+          ThemedField(
+            label: 'تأكيد كلمة المرور الجديدة',
+            controller: confirmNewPassCtrl,
+            colors: colors,
+            hint: '••••••••',
+            obscure: true,
+          ),
+          const SizedBox(height: 4),
+          PrimaryButton(label: 'حفظ كلمة المرور', onPressed: _setNewPasswordAfterReset, loading: loading, colors: colors),
+        ],
         TextButton(
           onPressed: () => setState(() {
             resetMode = false;
+            resetStep = 'request';
+            otpCtrl.clear();
             err = '';
+            ok = '';
           }),
           child: Text('← العودة', style: TextStyle(color: colors.gold, fontSize: 12)),
         ),
@@ -430,6 +699,8 @@ class _AuthScreenState extends State<AuthScreen> {
         onTap: () => setState(() {
           tab = value;
           err = '';
+          otpSent = false;
+          otpCtrl.clear();
         }),
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 9),
