@@ -47,10 +47,10 @@ class _AdminScreenState extends State<AdminScreen> {
       appBar: AppBar(
         backgroundColor: colors.card,
         foregroundColor: colors.gold,
-        title: const Text('🛡️ لوحة المدير'),
+        title: const Text('لوحة المدير'),
         actions: [
           IconButton(
-            icon: const Text('🔑'),
+            icon: const Icon(Icons.vpn_key),
             onPressed: () => showDialog(context: context, builder: (_) => const _ChangePasswordDialog()),
           ),
           IconButton(
@@ -67,8 +67,8 @@ class _AdminScreenState extends State<AdminScreen> {
             decoration: BoxDecoration(color: colors.overlay, borderRadius: BorderRadius.circular(10)),
             child: Row(
               children: [
-                _segButton('subs', '🔑 الاشتراكات', colors),
-                _segButton('affiliates', '🤝 المسوّقون', colors),
+                _segButton('subs', 'الاشتراكات', colors),
+                _segButton('affiliates', 'المسوّقون', colors),
               ],
             ),
           ),
@@ -137,7 +137,7 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
     final colors = context.watch<ThemeController>().colors;
     return AlertDialog(
       backgroundColor: colors.card,
-      title: Text('🔑 تغيير كلمة المرور', style: TextStyle(color: colors.gold)),
+      title: Text('تغيير كلمة المرور', style: TextStyle(color: colors.gold)),
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -154,7 +154,7 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
         FilledButton(
           style: FilledButton.styleFrom(backgroundColor: colors.gold, foregroundColor: colors.bg),
           onPressed: saving ? null : _submit,
-          child: saving ? const SizedBox(height: 16, width: 16, child: CircularProgressIndicator(strokeWidth: 2)) : const Text('💾 حفظ'),
+          child: saving ? const SizedBox(height: 16, width: 16, child: CircularProgressIndicator(strokeWidth: 2)) : const Text('حفظ'),
         ),
       ],
     );
@@ -172,7 +172,7 @@ class _SubsTabState extends State<_SubsTab> {
 
   void _copy(String value, String label) {
     Clipboard.setData(ClipboardData(text: value));
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('✅ تم نسخ $label')));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تم نسخ $label')));
   }
 
   Future<void> _deleteSub(String id) async {
@@ -227,15 +227,15 @@ class _SubsTabState extends State<_SubsTab> {
     );
     if (confirm == true) {
       await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('✅ تم الإرسال إلى $email')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تم الإرسال إلى $email')));
     }
   }
 
   void _copyWelcome(Subscription sub) {
-    final msg = 'مرحباً 👋\n\nتم تفعيل اشتراكك في تطبيق إدارة بطاقاتك\n\n'
-        '🔗 رابط التطبيق:\nhttps://banking-app-pink-six.vercel.app\n\n'
-        '🔑 كود التفعيل:\n${sub.code}\n\n'
-        '📱 لتثبيت التطبيق:\nافتح الرابط ← زر المشاركة ← "إضافة إلى الشاشة الرئيسية"';
+    final msg = 'مرحباً\n\nتم تفعيل اشتراكك في تطبيق إدارة بطاقاتك\n\n'
+        'رابط التطبيق:\nhttps://banking-app-pink-six.vercel.app\n\n'
+        'كود التفعيل:\n${sub.code}\n\n'
+        'لتثبيت التطبيق:\nافتح الرابط ← زر المشاركة ← "إضافة إلى الشاشة الرئيسية"';
     _copy(msg, 'رسالة الترحيب');
   }
 
@@ -244,12 +244,12 @@ class _SubsTabState extends State<_SubsTab> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('✅ تأكيد التجديد'),
+        title: const Text('تأكيد التجديد'),
         content: Text(
-            'العميل: ${sub.usedByEmail ?? 'غير مفعّل'}\n\n📦 الباقة: ${plan.label}\n💵 السعر: ${plan.price} د.ل\n📅 ينتهي: ${_fmtDate(Timestamp.fromDate(newExp))}'),
+            'العميل: ${sub.usedByEmail ?? 'غير مفعّل'}\n\nالباقة: ${plan.label}\nالسعر: ${plan.price} د.ل\nينتهي: ${_fmtDate(Timestamp.fromDate(newExp))}'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('إلغاء')),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('تأكيد ✅')),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('تأكيد')),
         ],
       ),
     );
@@ -261,7 +261,7 @@ class _SubsTabState extends State<_SubsTab> {
       });
       if (mounted) {
         Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('✅ تم تجديد الاشتراك بـ ${plan.label}')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تم تجديد الاشتراك بـ ${plan.label}')));
       }
     }
   }
@@ -280,7 +280,7 @@ class _SubsTabState extends State<_SubsTab> {
           child: ListView(
             controller: scrollController,
             children: [
-              Text('🔄 تجديد الاشتراك', style: TextStyle(color: colors.gold, fontSize: 16, fontWeight: FontWeight.w900)),
+              Text('تجديد الاشتراك', style: TextStyle(color: colors.gold, fontSize: 16, fontWeight: FontWeight.w900)),
               const SizedBox(height: 12),
               for (final plan in subPlans)
                 Padding(
@@ -295,7 +295,7 @@ class _SubsTabState extends State<_SubsTab> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(plan.label, style: TextStyle(color: colors.text, fontWeight: FontWeight.w700)),
-                              Text('📅 ينتهي: ${_fmtDate(Timestamp.fromDate(addPlanDuration(plan.months, plan.days)))}',
+                              Text('ينتهي: ${_fmtDate(Timestamp.fromDate(addPlanDuration(plan.months, plan.days)))}',
                                   style: TextStyle(color: colors.textMuted, fontSize: 11)),
                             ],
                           ),
@@ -333,7 +333,7 @@ class _SubsTabState extends State<_SubsTab> {
             child: ListView(
               controller: scrollController,
               children: [
-                Text('➕ كود اشتراك جديد', style: TextStyle(color: colors.gold, fontSize: 16, fontWeight: FontWeight.w900)),
+                Text('كود اشتراك جديد', style: TextStyle(color: colors.gold, fontSize: 16, fontWeight: FontWeight.w900)),
                 const SizedBox(height: 12),
                 Row(
                   children: [
@@ -343,7 +343,7 @@ class _SubsTabState extends State<_SubsTab> {
                     const SizedBox(width: 8),
                     IconButton(
                       onPressed: () => setSheetState(() => codeCtrl.text = _genCode()),
-                      icon: const Text('🎲'),
+                      icon: const Icon(Icons.casino),
                     ),
                   ],
                 ),
@@ -371,7 +371,7 @@ class _SubsTabState extends State<_SubsTab> {
                 ThemedField(label: 'ملاحظة', controller: notesCtrl, colors: colors, hint: 'اسم العميل مثلاً'),
                 const SizedBox(height: 8),
                 PrimaryButton(
-                  label: '💾 حفظ',
+                  label: 'حفظ',
                   colors: colors,
                   loading: saving,
                   onPressed: () async {
@@ -460,11 +460,11 @@ class _SubsTabState extends State<_SubsTab> {
     final isFree = sub.usedBy == null && !isExpired;
     final deviceCount = sub.devices.length;
 
-    final (chipBg, chipBorder, chipLabel) = isActive
-        ? (const Color(0x1A2ECC71), const Color(0x4D2ECC71), '✅ مفعّل')
+    final (chipBg, chipBorder, chipIcon, chipLabel) = isActive
+        ? (const Color(0x1A2ECC71), const Color(0x4D2ECC71), Icons.check_circle, 'مفعّل')
         : isFree
-            ? (const Color(0x1AC9A84C), const Color(0x4DC9A84C), '🔓 متاح')
-            : (const Color(0x1AE74C3C), const Color(0x4DE74C3C), '❌ منتهي');
+            ? (const Color(0x1AC9A84C), const Color(0x4DC9A84C), Icons.lock_open, 'متاح')
+            : (const Color(0x1AE74C3C), const Color(0x4DE74C3C), Icons.cancel, 'منتهي');
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
@@ -479,23 +479,35 @@ class _SubsTabState extends State<_SubsTab> {
                 child: Row(
                   children: [
                     Flexible(child: Text(sub.code, style: TextStyle(color: colors.gold, fontWeight: FontWeight.w700, fontSize: 15))),
-                    IconButton(iconSize: 16, visualDensity: VisualDensity.compact, icon: const Text('📋'), onPressed: () => _copy(sub.code, 'الكود')),
+                    IconButton(
+                      iconSize: 16,
+                      visualDensity: VisualDensity.compact,
+                      icon: const Icon(Icons.content_copy),
+                      onPressed: () => _copy(sub.code, 'الكود'),
+                    ),
                   ],
                 ),
               ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(color: chipBg, border: Border.all(color: chipBorder), borderRadius: BorderRadius.circular(20)),
-                child: Text(chipLabel, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFFF8F6F0))),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(chipIcon, size: 11, color: const Color(0xFFF8F6F0)),
+                    const SizedBox(width: 3),
+                    Text(chipLabel, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFFF8F6F0))),
+                  ],
+                ),
               ),
             ],
           ),
           const SizedBox(height: 4),
-          Text('📅 ينتهي: ${_fmtDate(sub.expiresAt)} (${(days ?? 0) > 0 ? '$days يوم' : 'منتهي'})', style: TextStyle(fontSize: 12, color: colors.textMuted)),
-          if (sub.usedByEmail != null) Text('👤 ${sub.usedByEmail}', style: TextStyle(fontSize: 12, color: colors.textMuted)),
-          if (sub.planLabel.isNotEmpty) Text('📦 ${sub.planLabel}', style: TextStyle(fontSize: 12, color: colors.textMuted)),
-          Text('👥 الحد: ${sub.maxClients} عميل', style: TextStyle(fontSize: 12, color: colors.textMuted)),
-          if (sub.notes.isNotEmpty) Text('📝 ${sub.notes}', style: TextStyle(fontSize: 12, color: colors.textMuted)),
+          Text('ينتهي: ${_fmtDate(sub.expiresAt)} (${(days ?? 0) > 0 ? '$days يوم' : 'منتهي'})', style: TextStyle(fontSize: 12, color: colors.textMuted)),
+          if (sub.usedByEmail != null) Text(sub.usedByEmail!, style: TextStyle(fontSize: 12, color: colors.textMuted)),
+          if (sub.planLabel.isNotEmpty) Text(sub.planLabel, style: TextStyle(fontSize: 12, color: colors.textMuted)),
+          Text('الحد: ${sub.maxClients} عميل', style: TextStyle(fontSize: 12, color: colors.textMuted)),
+          if (sub.notes.isNotEmpty) Text(sub.notes, style: TextStyle(fontSize: 12, color: colors.textMuted)),
           const SizedBox(height: 8),
           InkWell(
             onTap: () => setState(() => expandedDevices = expandedDevices == sub.id ? null : sub.id),
@@ -505,7 +517,7 @@ class _SubsTabState extends State<_SubsTab> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('📱 الأجهزة: $deviceCount/7', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: colors.gold)),
+                  Text('الأجهزة: $deviceCount/7', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: colors.gold)),
                   Text(expandedDevices == sub.id ? '▲' : '▼', style: TextStyle(color: colors.gold, fontSize: 12)),
                 ],
               ),
@@ -531,7 +543,7 @@ class _SubsTabState extends State<_SubsTab> {
                               child: Row(
                                 children: [
                                   SizedBox(width: 18, child: Text('${i + 1}', style: TextStyle(fontSize: 12, color: colors.textMuted))),
-                                  const Text('📱', style: TextStyle(fontSize: 16)),
+                                  Icon(Icons.smartphone, size: 16, color: colors.textMuted),
                                   const SizedBox(width: 8),
                                   Expanded(
                                     child: Column(
@@ -554,14 +566,31 @@ class _SubsTabState extends State<_SubsTab> {
             spacing: 8,
             runSpacing: 8,
             children: [
-              OutlinedButton(onPressed: () => _copyWelcome(sub), child: const Text('✉️ رسالة', style: TextStyle(fontSize: 12))),
-              OutlinedButton(onPressed: () => _openRenewSheet(sub), child: Text('🔄 تجديد', style: TextStyle(fontSize: 12, color: colors.gold))),
-              OutlinedButton(onPressed: () => _resetPassword(sub.usedByEmail), child: const Text('🔑 كلمة مرور', style: TextStyle(fontSize: 12))),
-              OutlinedButton(onPressed: () => _resetDevices(sub.id), child: const Text('📱 إعادة ضبط الأجهزة', style: TextStyle(fontSize: 12))),
-              OutlinedButton(
+              OutlinedButton.icon(
+                onPressed: () => _copyWelcome(sub),
+                icon: const Icon(Icons.mail_outline, size: 14),
+                label: const Text('رسالة', style: TextStyle(fontSize: 12)),
+              ),
+              OutlinedButton.icon(
+                onPressed: () => _openRenewSheet(sub),
+                icon: Icon(Icons.autorenew, size: 14, color: colors.gold),
+                label: Text('تجديد', style: TextStyle(fontSize: 12, color: colors.gold)),
+              ),
+              OutlinedButton.icon(
+                onPressed: () => _resetPassword(sub.usedByEmail),
+                icon: const Icon(Icons.vpn_key, size: 14),
+                label: const Text('كلمة مرور', style: TextStyle(fontSize: 12)),
+              ),
+              OutlinedButton.icon(
+                onPressed: () => _resetDevices(sub.id),
+                icon: const Icon(Icons.phonelink_erase, size: 14),
+                label: const Text('إعادة ضبط الأجهزة', style: TextStyle(fontSize: 12)),
+              ),
+              OutlinedButton.icon(
                 style: OutlinedButton.styleFrom(side: const BorderSide(color: Color(0x4DE74C3C))),
                 onPressed: () => _deleteSub(sub.id),
-                child: const Text('🗑 حذف', style: TextStyle(fontSize: 12, color: Color(0xFFE74C3C))),
+                icon: const Icon(Icons.delete_outline, size: 14, color: Color(0xFFE74C3C)),
+                label: const Text('حذف', style: TextStyle(fontSize: 12, color: Color(0xFFE74C3C))),
               ),
             ],
           ),
@@ -582,7 +611,7 @@ class _AffiliatesTabState extends State<_AffiliatesTab> {
 
   void _copy(String value, String label) {
     Clipboard.setData(ClipboardData(text: value));
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('✅ تم نسخ $label')));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تم نسخ $label')));
   }
 
   Future<void> _deleteAff(String id) async {
@@ -622,7 +651,7 @@ class _AffiliatesTabState extends State<_AffiliatesTab> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text('🤝 مسوّق جديد', style: TextStyle(color: colors.gold, fontSize: 16, fontWeight: FontWeight.w900)),
+                Text('مسوّق جديد', style: TextStyle(color: colors.gold, fontSize: 16, fontWeight: FontWeight.w900)),
                 const SizedBox(height: 12),
                 ThemedField(label: 'اسم المسوّق *', controller: nameCtrl, colors: colors, hint: 'مثال: محمد الغانم'),
                 Row(
@@ -631,7 +660,10 @@ class _AffiliatesTabState extends State<_AffiliatesTab> {
                       child: ThemedField(label: 'كود الإحالة *', controller: codeCtrl, colors: colors, hint: 'MOHAMAD10', capitalization: TextCapitalization.characters),
                     ),
                     const SizedBox(width: 8),
-                    IconButton(onPressed: () => setSheetState(() => codeCtrl.text = _genAffCode(nameCtrl.text.isEmpty ? 'AFF' : nameCtrl.text)), icon: const Text('🎲')),
+                    IconButton(
+                      onPressed: () => setSheetState(() => codeCtrl.text = _genAffCode(nameCtrl.text.isEmpty ? 'AFF' : nameCtrl.text)),
+                      icon: const Icon(Icons.casino),
+                    ),
                   ],
                 ),
                 ThemedField(label: 'اسم الحساب (يوتيوب/انستغرام)', controller: handleCtrl, colors: colors, hint: 'mohamad_yt'),
@@ -657,7 +689,7 @@ class _AffiliatesTabState extends State<_AffiliatesTab> {
                 const SizedBox(height: 14),
                 ThemedField(label: 'ملاحظات', controller: notesCtrl, colors: colors),
                 PrimaryButton(
-                  label: '💾 حفظ',
+                  label: 'حفظ',
                   colors: colors,
                   loading: saving,
                   onPressed: () async {
@@ -711,13 +743,13 @@ class _AffiliatesTabState extends State<_AffiliatesTab> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text('💰 دفعة — ${aff.name}', style: TextStyle(color: colors.gold, fontSize: 16, fontWeight: FontWeight.w900)),
+                Text('دفعة — ${aff.name}', style: TextStyle(color: colors.gold, fontSize: 16, fontWeight: FontWeight.w900)),
                 const SizedBox(height: 12),
                 ThemedField(label: 'المبلغ (د.ل) *', controller: amountCtrl, colors: colors, keyboardType: const TextInputType.numberWithOptions(decimal: true)),
                 ThemedField(label: 'التاريخ', controller: dateCtrl, colors: colors),
                 ThemedField(label: 'ملاحظة', controller: noteCtrl, colors: colors, hint: 'مثال: دفع عبر تحويل بنكي'),
                 PrimaryButton(
-                  label: '💾 حفظ',
+                  label: 'حفظ',
                   colors: colors,
                   loading: saving,
                   onPressed: () async {
@@ -796,36 +828,40 @@ class _AffiliatesTabState extends State<_AffiliatesTab> {
           Row(
             children: [
               Expanded(child: Text(aff.name, style: TextStyle(color: colors.gold, fontWeight: FontWeight.w700, fontSize: 15))),
-              OutlinedButton(
+              OutlinedButton.icon(
                 style: OutlinedButton.styleFrom(backgroundColor: colors.goldSoft, side: BorderSide(color: colors.borderSoft), padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4)),
                 onPressed: () => _copy(aff.code, 'كود الإحالة'),
-                child: Text('📋 ${aff.code}', style: const TextStyle(fontSize: 11, color: Color(0xFFF8F6F0))),
+                icon: const Icon(Icons.content_copy, size: 12, color: Color(0xFFF8F6F0)),
+                label: Text(aff.code, style: const TextStyle(fontSize: 11, color: Color(0xFFF8F6F0))),
               ),
             ],
           ),
           if (aff.handle.isNotEmpty) Text('@${aff.handle}', style: TextStyle(fontSize: 12, color: colors.textMuted)),
-          Text('💹 العمولة: ${aff.commissionPct}%', style: TextStyle(fontSize: 12, color: colors.textMuted)),
-          Text('📊 الإحالات: ${aff.totalReferrals}', style: TextStyle(fontSize: 12, color: colors.textMuted)),
-          Text('💵 المدفوع: ${aff.totalPaid.toStringAsFixed(2)} د.ل', style: TextStyle(fontSize: 12, color: colors.textMuted)),
-          if (aff.notes.isNotEmpty) Text('📝 ${aff.notes}', style: TextStyle(fontSize: 12, color: colors.textMuted)),
+          Text('العمولة: ${aff.commissionPct}%', style: TextStyle(fontSize: 12, color: colors.textMuted)),
+          Text('الإحالات: ${aff.totalReferrals}', style: TextStyle(fontSize: 12, color: colors.textMuted)),
+          Text('المدفوع: ${aff.totalPaid.toStringAsFixed(2)} د.ل', style: TextStyle(fontSize: 12, color: colors.textMuted)),
+          if (aff.notes.isNotEmpty) Text(aff.notes, style: TextStyle(fontSize: 12, color: colors.textMuted)),
           const SizedBox(height: 8),
           Wrap(
             spacing: 8,
             runSpacing: 8,
             children: [
-              OutlinedButton(
+              OutlinedButton.icon(
                 style: OutlinedButton.styleFrom(side: const BorderSide(color: Color(0x4D2ECC71))),
                 onPressed: () => _openPaySheet(aff),
-                child: const Text('💰 دفعة', style: TextStyle(fontSize: 12, color: Color(0xFF2ECC71))),
+                icon: const Icon(Icons.payments_outlined, size: 14, color: Color(0xFF2ECC71)),
+                label: const Text('دفعة', style: TextStyle(fontSize: 12, color: Color(0xFF2ECC71))),
               ),
-              OutlinedButton(
+              OutlinedButton.icon(
                 onPressed: () => setState(() => expandedHistory = expandedHistory == aff.id ? null : aff.id),
-                child: const Text('📜 السجل', style: TextStyle(fontSize: 12)),
+                icon: const Icon(Icons.history, size: 14),
+                label: const Text('السجل', style: TextStyle(fontSize: 12)),
               ),
-              OutlinedButton(
+              OutlinedButton.icon(
                 style: OutlinedButton.styleFrom(side: const BorderSide(color: Color(0x4DE74C3C))),
                 onPressed: () => _deleteAff(aff.id),
-                child: const Text('🗑 حذف', style: TextStyle(fontSize: 12, color: Color(0xFFE74C3C))),
+                icon: const Icon(Icons.delete_outline, size: 14, color: Color(0xFFE74C3C)),
+                label: const Text('حذف', style: TextStyle(fontSize: 12, color: Color(0xFFE74C3C))),
               ),
             ],
           ),
@@ -846,7 +882,7 @@ class _AffiliatesTabState extends State<_AffiliatesTab> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Text('📜 سجل الدفعات', style: TextStyle(color: colors.gold, fontSize: 12, fontWeight: FontWeight.w700)),
+                      Text('سجل الدفعات', style: TextStyle(color: colors.gold, fontSize: 12, fontWeight: FontWeight.w700)),
                       const SizedBox(height: 6),
                       if (pays.isEmpty)
                         Text('لا يوجد دفعات بعد', textAlign: TextAlign.center, style: TextStyle(color: colors.textMuted, fontSize: 12))

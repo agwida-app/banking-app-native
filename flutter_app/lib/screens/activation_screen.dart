@@ -133,16 +133,16 @@ class _ActivationScreenState extends State<ActivationScreen> {
           'usedAt': FieldValue.serverTimestamp(),
           'usedByEmail': user.email,
           'expiresAt': Timestamp.fromDate(newExp),
-          'planLabel': '${data['planLabel'] ?? ''} + شهر مجاني 🎁',
+          'planLabel': '${data['planLabel'] ?? ''} + شهر مجاني',
         });
-        _showMsg('🎉 تم التفعيل', 'مرحباً بك!\nحصلت على شهر مجاني إضافي بفضل كود الإحالة 🎁');
+        _showMsg('تم التفعيل', 'مرحباً بك!\nحصلت على شهر مجاني إضافي بفضل كود الإحالة');
       } else {
         await ref.update({
           'usedBy': user.uid,
           'usedAt': FieldValue.serverTimestamp(),
           'usedByEmail': user.email,
         });
-        _showMsg('✅ تم التفعيل', 'مرحباً بك في إدارة بطاقاتك!');
+        _showMsg('تم التفعيل', 'مرحباً بك في إدارة بطاقاتك!');
       }
     } catch (e) {
       _showMsg('خطأ', e.toString());
@@ -165,13 +165,13 @@ class _ActivationScreenState extends State<ActivationScreen> {
                 padding: const EdgeInsets.all(24),
                 child: Column(
                   children: [
-                    const Text('💳', style: TextStyle(fontSize: 50)),
+                    Icon(Icons.credit_card, size: 50, color: colors.gold),
                     const SizedBox(height: 12),
                     Text('تفعيل الاشتراك', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: colors.text)),
                     const SizedBox(height: 4),
                     Text(widget.user.email ?? '', style: TextStyle(fontSize: 13, color: colors.textMuted)),
                     const SizedBox(height: 20),
-                    if (widget.subStatus == 'expired') const MessageBanner(text: '⚠️ انتهى اشتراكك — تواصل مع المسؤول للتجديد'),
+                    if (widget.subStatus == 'expired') const MessageBanner(text: 'انتهى اشتراكك — تواصل مع المسؤول للتجديد'),
                     Container(
                       width: double.infinity,
                       padding: const EdgeInsets.all(24),
@@ -191,16 +191,16 @@ class _ActivationScreenState extends State<ActivationScreen> {
                             capitalization: TextCapitalization.characters,
                           ),
                           ThemedField(
-                            label: 'كود الإحالة (اختياري — للحصول على شهر مجاني 🎁)',
+                            label: 'كود الإحالة (اختياري — للحصول على شهر مجاني)',
                             controller: refCtrl,
                             colors: colors,
                             hint: 'مثال: MOHAMAD47',
                             capitalization: TextCapitalization.characters,
                           ),
                           if (refCtrl.text.isNotEmpty)
-                            const MessageBanner(text: '🎁 ستحصل على شهر مجاني إضافي!', isError: false),
+                            const MessageBanner(text: 'ستحصل على شهر مجاني إضافي!', isError: false),
                           const SizedBox(height: 4),
-                          PrimaryButton(label: '🔓 تفعيل الاشتراك', onPressed: _activate, loading: loading, colors: colors),
+                          PrimaryButton(label: 'تفعيل الاشتراك', onPressed: _activate, loading: loading, colors: colors),
                         ],
                       ),
                     ),
@@ -215,7 +215,7 @@ class _ActivationScreenState extends State<ActivationScreen> {
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         ),
                         onPressed: () => launchUrl(Uri.parse(whatsappUrl), mode: LaunchMode.externalApplication),
-                        child: const Text('📱 تواصل مع خدمة العملاء عبر واتساب',
+                        child: const Text('تواصل مع خدمة العملاء عبر واتساب',
                             style: TextStyle(color: Color(0xFF25D366), fontSize: 14, fontWeight: FontWeight.w700)),
                       ),
                     ),
@@ -235,7 +235,7 @@ class _ActivationScreenState extends State<ActivationScreen> {
               child: IconButton(
                 onPressed: theme.toggle,
                 style: IconButton.styleFrom(backgroundColor: colors.card, side: BorderSide(color: colors.border)),
-                icon: Text(theme.isDark ? '☀️' : '🌙'),
+                icon: Icon(theme.isDark ? Icons.light_mode : Icons.dark_mode, color: colors.gold),
               ),
             ),
           ],

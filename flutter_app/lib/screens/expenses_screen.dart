@@ -12,15 +12,15 @@ String _fmtDate(DateTime d) => '${d.year}-${d.month.toString().padLeft(2, '0')}-
 const _arMonths = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
 String _fmtDateHuman(DateTime d) => '${d.day} ${_arMonths[d.month - 1]}';
 
-const _categoryEmoji = {
-  'إيجار': '🏠',
-  'مطعم': '🍽️',
-  'تسوق': '🛍️',
-  'فواتير': '🧾',
-  'شراء بطاقة': '💳',
-  'صديق': '👤',
-  'ادخار': '🏦',
-  'أخرى': '📦',
+const _categoryIcons = {
+  'إيجار': Icons.home_outlined,
+  'مطعم': Icons.restaurant_outlined,
+  'تسوق': Icons.shopping_bag_outlined,
+  'فواتير': Icons.receipt_long_outlined,
+  'شراء بطاقة': Icons.credit_card,
+  'صديق': Icons.person_outline,
+  'ادخار': Icons.account_balance_outlined,
+  'أخرى': Icons.category_outlined,
 };
 
 class ExpensesScreen extends StatefulWidget {
@@ -57,8 +57,14 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(existing == null ? '➕ حركة مالية جديدة' : '✏️ تعديل الحركة',
-                    style: TextStyle(color: colors.gold, fontSize: 16, fontWeight: FontWeight.w900)),
+                Row(
+                  children: [
+                    Icon(existing == null ? Icons.add_circle_outline : Icons.edit_outlined, size: 18, color: colors.gold),
+                    const SizedBox(width: 6),
+                    Text(existing == null ? 'حركة مالية جديدة' : 'تعديل الحركة',
+                        style: TextStyle(color: colors.gold, fontSize: 16, fontWeight: FontWeight.w900)),
+                  ],
+                ),
                 const SizedBox(height: 12),
                 if (err != null) MessageBanner(text: err!),
                 Text('نوع الحركة', style: TextStyle(fontSize: 12, color: colors.textSoft)),
@@ -66,11 +72,13 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                 Row(
                   children: [
                     Expanded(
-                      child: _kindButton(colors, 'مصروف 🔻', kind == ExpenseKind.expense, () => setSheetState(() => kind = ExpenseKind.expense)),
+                      child: _kindButton(
+                          colors, 'مصروف', Icons.arrow_downward, kind == ExpenseKind.expense, () => setSheetState(() => kind = ExpenseKind.expense)),
                     ),
                     const SizedBox(width: 8),
                     Expanded(
-                      child: _kindButton(colors, 'دخل 🔺', kind == ExpenseKind.income, () => setSheetState(() => kind = ExpenseKind.income)),
+                      child: _kindButton(
+                          colors, 'دخل', Icons.arrow_upward, kind == ExpenseKind.income, () => setSheetState(() => kind = ExpenseKind.income)),
                     ),
                   ],
                 ),
@@ -116,7 +124,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                 ThemedField(label: 'ملاحظة', controller: noteCtrl, colors: colors, maxLines: 2, hint: 'مثال: إيجار شهر يوليو'),
                 const SizedBox(height: 8),
                 PrimaryButton(
-                  label: '💾 حفظ',
+                  label: 'حفظ',
                   colors: colors,
                   loading: saving,
                   onPressed: () async {
@@ -181,7 +189,8 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     );
   }
 
-  Widget _kindButton(AppColors colors, String label, bool selected, VoidCallback onTap) {
+  Widget _kindButton(AppColors colors, String label, IconData icon, bool selected, VoidCallback onTap) {
+    final color = selected ? colors.gold : colors.textMuted;
     return OutlinedButton(
       style: OutlinedButton.styleFrom(
         padding: const EdgeInsets.symmetric(vertical: 12),
@@ -189,7 +198,14 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
         backgroundColor: selected ? colors.goldSoft : null,
       ),
       onPressed: onTap,
-      child: Text(label, style: TextStyle(color: selected ? colors.gold : colors.textMuted, fontWeight: selected ? FontWeight.w700 : FontWeight.normal)),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, size: 15, color: color),
+          const SizedBox(width: 6),
+          Text(label, style: TextStyle(color: color, fontWeight: selected ? FontWeight.w700 : FontWeight.normal)),
+        ],
+      ),
     );
   }
 
@@ -203,7 +219,13 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('💰 المصروفات', style: TextStyle(color: colors.text, fontSize: 19, fontWeight: FontWeight.w900)),
+              Row(
+                children: [
+                  Icon(Icons.account_balance_wallet_outlined, size: 20, color: colors.gold),
+                  const SizedBox(width: 6),
+                  Text('المصروفات', style: TextStyle(color: colors.text, fontSize: 19, fontWeight: FontWeight.w900)),
+                ],
+              ),
               const SizedBox(height: 3),
               Text('متابعة ما يُصرف ويُدّخر', style: TextStyle(color: colors.textMuted, fontSize: 12)),
             ],
@@ -252,7 +274,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('🗑 حذف الحركة'),
+        title: const Text('حذف الحركة'),
         content: const Text('هل تريد حذف هذه الحركة المالية؟'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('إلغاء')),
@@ -314,8 +336,8 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                     children: [
                       _labeledChips(colors, filterKind, const {
                         'all': 'الكل',
-                        'expense': '🔻 مصروف',
-                        'income': '🔺 دخل',
+                        'expense': 'مصروف',
+                        'income': 'دخل',
                       }, (v) => setState(() => filterKind = v)),
                       const SizedBox(height: 8),
                       _labeledChips(
@@ -336,7 +358,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                               child: Column(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Text('🗂️', style: TextStyle(fontSize: 34, color: colors.textMuted.withOpacity(0.6))),
+                                  Icon(Icons.inbox_outlined, size: 34, color: colors.textMuted.withOpacity(0.6)),
                                   const SizedBox(height: 8),
                                   Text('لا توجد حركات مالية بعد', style: TextStyle(color: colors.textMuted)),
                                 ],
@@ -357,7 +379,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
 
     return Scaffold(
       backgroundColor: colors.bg,
-      appBar: AppBar(backgroundColor: colors.card, foregroundColor: colors.gold, title: const Text('💰 المصروفات')),
+      appBar: AppBar(backgroundColor: colors.card, foregroundColor: colors.gold, title: const Text('المصروفات')),
       body: body,
     );
   }
@@ -365,7 +387,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   Widget _expenseCard(AppColors colors, Expense e) {
     final isExpense = e.kind == ExpenseKind.expense;
     final color = isExpense ? const Color(0xFFE74C3C) : const Color(0xFF2ECC71);
-    final emoji = _categoryEmoji[e.category] ?? '📦';
+    final categoryIcon = _categoryIcons[e.category] ?? Icons.category_outlined;
     final metaParts = [
       if (e.person.isNotEmpty) (isExpense ? 'إلى ${e.person}' : 'من ${e.person}'),
       _fmtDateHuman(e.date),
@@ -395,7 +417,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                   height: 42,
                   alignment: Alignment.center,
                   decoration: BoxDecoration(color: color.withOpacity(0.14), borderRadius: BorderRadius.circular(13)),
-                  child: Text(emoji, style: const TextStyle(fontSize: 18)),
+                  child: Icon(categoryIcon, size: 19, color: color),
                 ),
                 const SizedBox(width: 12),
                 Expanded(

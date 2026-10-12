@@ -128,7 +128,7 @@ class _ClientFormScreenState extends State<ClientFormScreen> {
       appBar: AppBar(
         backgroundColor: colors.card,
         foregroundColor: colors.gold,
-        title: Text(isEdit ? '✏️ تعديل عميل' : '➕ إضافة عميل'),
+        title: Text(isEdit ? 'تعديل عميل' : 'إضافة عميل'),
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
@@ -213,7 +213,7 @@ class _ClientFormScreenState extends State<ClientFormScreen> {
           if (isSold) ThemedField(label: 'بيعت إلى', controller: soldToCtrl, colors: colors),
           ThemedField(label: 'ملاحظات', controller: notesCtrl, colors: colors, maxLines: 3),
           const SizedBox(height: 20),
-          PrimaryButton(label: '💾 حفظ', onPressed: _save, loading: saving, colors: colors),
+          PrimaryButton(label: 'حفظ', onPressed: _save, loading: saving, colors: colors),
         ],
       ),
     );

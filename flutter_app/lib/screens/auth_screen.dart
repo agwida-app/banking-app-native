@@ -99,7 +99,7 @@ class _AuthScreenState extends State<AuthScreen> {
     try {
       await FirebaseAuth.instance.sendPasswordResetEmail(email: emailCtrl.text.trim());
       setState(() {
-        ok = 'تم الإرسال ✉';
+        ok = 'تم الإرسال';
         resetMode = false;
       });
     } catch (_) {
@@ -123,7 +123,7 @@ class _AuthScreenState extends State<AuthScreen> {
                 padding: const EdgeInsets.all(24),
                 child: Column(
                   children: [
-                    const Text('💳', style: TextStyle(fontSize: 50)),
+                    Icon(Icons.credit_card, size: 50, color: colors.gold),
                     const SizedBox(height: 12),
                     Text('إدارة بطاقاتك', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: colors.text)),
                     const SizedBox(height: 4),
@@ -151,7 +151,7 @@ class _AuthScreenState extends State<AuthScreen> {
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         ),
                         onPressed: () => launchUrl(Uri.parse(whatsappUrl), mode: LaunchMode.externalApplication),
-                        child: const Text('📱 تواصل مع خدمة العملاء عبر واتساب',
+                        child: const Text('تواصل مع خدمة العملاء عبر واتساب',
                             style: TextStyle(color: Color(0xFF25D366), fontSize: 14, fontWeight: FontWeight.w700)),
                       ),
                     ),
@@ -165,7 +165,7 @@ class _AuthScreenState extends State<AuthScreen> {
               child: IconButton(
                 onPressed: theme.toggle,
                 style: IconButton.styleFrom(backgroundColor: colors.card, side: BorderSide(color: colors.border)),
-                icon: Text(theme.isDark ? '☀️' : '🌙'),
+                icon: Icon(theme.isDark ? Icons.light_mode : Icons.dark_mode, color: colors.gold),
               ),
             ),
           ],
@@ -202,7 +202,7 @@ class _AuthScreenState extends State<AuthScreen> {
         ThemedField(label: 'كلمة المرور', controller: passCtrl, colors: colors, hint: '••••••••', obscure: true),
         const SizedBox(height: 4),
         PrimaryButton(
-          label: tab == 'login' ? '🔐 تسجيل الدخول' : '✨ إنشاء حساب',
+          label: tab == 'login' ? 'تسجيل الدخول' : 'إنشاء حساب',
           onPressed: _submit,
           loading: loading,
           colors: colors,
@@ -237,7 +237,7 @@ class _AuthScreenState extends State<AuthScreen> {
           hint: 'example@mail.com',
           keyboardType: TextInputType.emailAddress,
         ),
-        PrimaryButton(label: '📨 إرسال', onPressed: _submitReset, loading: loading, colors: colors),
+        PrimaryButton(label: 'إرسال', onPressed: _submitReset, loading: loading, colors: colors),
         TextButton(
           onPressed: () => setState(() {
             resetMode = false;

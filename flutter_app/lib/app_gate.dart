@@ -15,7 +15,7 @@ import 'theme/app_theme.dart';
 
 const adminUid = 'yel5HGeqTfXRUmraIzfZK4XVhrS2';
 
-String _deviceType() => Platform.isIOS ? 'iPhone 📱' : 'Android 📱';
+String _deviceType() => Platform.isIOS ? 'iPhone' : 'Android';
 
 String _generateDeviceId() {
   const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
@@ -135,7 +135,7 @@ class _AppGateState extends State<AppGate> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text('📱📱📱', style: TextStyle(fontSize: 50)),
+                Icon(Icons.phonelink_erase, size: 50, color: colors.textMuted),
                 const SizedBox(height: 16),
                 Text('تجاوزت الحد الأقصى للأجهزة',
                     textAlign: TextAlign.center,

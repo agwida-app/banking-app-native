@@ -46,12 +46,15 @@ class _HomeScreenState extends State<HomeScreen> {
         backgroundColor: colors.card,
         elevation: 0,
         automaticallyImplyLeading: false,
-        title: Text('💳 إدارة بطاقاتك', style: TextStyle(color: colors.gold, fontSize: 15, fontWeight: FontWeight.w900)),
+        title: Text('إدارة بطاقاتك', style: TextStyle(color: colors.gold, fontSize: 15, fontWeight: FontWeight.w900)),
         actions: [
-          IconButton(onPressed: theme.toggle, icon: Text(theme.isDark ? '☀️' : '🌙')),
+          IconButton(
+            onPressed: theme.toggle,
+            icon: Icon(theme.isDark ? Icons.light_mode : Icons.dark_mode, color: colors.gold),
+          ),
           if (widget.isAdmin)
             IconButton(
-              icon: const Text('🛡️', style: TextStyle(fontSize: 20)),
+              icon: Icon(Icons.admin_panel_settings, size: 20, color: colors.gold),
               onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminScreen())),
             ),
           TextButton(
@@ -66,8 +69,8 @@ class _HomeScreenState extends State<HomeScreen> {
         selectedIndex: navIndex,
         onDestinationSelected: (i) => setState(() => navIndex = i),
         destinations: const [
-          NavigationDestination(icon: Text('👥'), label: 'العملاء'),
-          NavigationDestination(icon: Text('💰'), label: 'المصروفات'),
+          NavigationDestination(icon: Icon(Icons.people_alt_outlined), label: 'العملاء'),
+          NavigationDestination(icon: Icon(Icons.account_balance_wallet_outlined), label: 'المصروفات'),
         ],
       ),
     );
@@ -201,8 +204,17 @@ class _ClientsAndStatsTabState extends State<_ClientsAndStatsTab> {
                   border: Border.all(color: const Color(0x4DF39C12)),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Text('⚠️ اشتراكك ينتهي خلال ${widget.subDays} أيام — تواصل مع المسؤول للتجديد',
-                    style: const TextStyle(color: Color(0xFFF39C12), fontSize: 12), textAlign: TextAlign.center),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.warning_amber_rounded, size: 16, color: Color(0xFFF39C12)),
+                    const SizedBox(width: 6),
+                    Flexible(
+                      child: Text('اشتراكك ينتهي خلال ${widget.subDays} أيام — تواصل مع المسؤول للتجديد',
+                          style: const TextStyle(color: Color(0xFFF39C12), fontSize: 12), textAlign: TextAlign.center),
+                    ),
+                  ],
+                ),
               ),
             Container(
               margin: const EdgeInsets.all(12),
@@ -210,8 +222,8 @@ class _ClientsAndStatsTabState extends State<_ClientsAndStatsTab> {
               decoration: BoxDecoration(color: colors.overlay, borderRadius: BorderRadius.circular(10)),
               child: Row(
                 children: [
-                  _segButton('clients', '👥 العملاء', colors),
-                  _segButton('stats', '📊 الإحصائيات', colors),
+                  _segButton('clients', 'العملاء', colors),
+                  _segButton('stats', 'الإحصائيات', colors),
                 ],
               ),
             ),
@@ -282,11 +294,11 @@ class _ClientsAndStatsTabState extends State<_ClientsAndStatsTab> {
           runSpacing: 10,
           alignment: WrapAlignment.center,
           children: [
-            StatCard(icon: '👥', value: '$total', label: 'إجمالي العملاء', valueColor: colors.gold, colors: colors),
-            StatCard(icon: '✅', value: '$booked', label: 'تم حجز البطاقة', valueColor: const Color(0xFF2ECC71), colors: colors),
-            StatCard(icon: '⏳', value: '$pending', label: 'لم يتم الحجز', valueColor: const Color(0xFFF39C12), colors: colors),
-            StatCard(icon: '🔴', value: '$sold', label: 'تم البيع', valueColor: const Color(0xFFE74C3C), colors: colors),
-            StatCard(icon: '💰', value: '${totalAmt.toStringAsFixed(0)} د.ل', label: 'إجمالي المبالغ', valueColor: colors.gold, colors: colors),
+            StatCard(icon: Icons.people_alt, value: '$total', label: 'إجمالي العملاء', valueColor: colors.gold, colors: colors),
+            StatCard(icon: Icons.check_circle, value: '$booked', label: 'تم حجز البطاقة', valueColor: const Color(0xFF2ECC71), colors: colors),
+            StatCard(icon: Icons.hourglass_bottom, value: '$pending', label: 'لم يتم الحجز', valueColor: const Color(0xFFF39C12), colors: colors),
+            StatCard(icon: Icons.sell, value: '$sold', label: 'تم البيع', valueColor: const Color(0xFFE74C3C), colors: colors),
+            StatCard(icon: Icons.payments, value: '${totalAmt.toStringAsFixed(0)} د.ل', label: 'إجمالي المبالغ', valueColor: colors.gold, colors: colors),
           ],
         ),
         if (bankCounts.isNotEmpty) ...[
@@ -301,7 +313,7 @@ class _ClientsAndStatsTabState extends State<_ClientsAndStatsTab> {
             padding: const EdgeInsets.all(14),
           ),
           onPressed: () => launchUrl(Uri.parse(whatsappUrl), mode: LaunchMode.externalApplication),
-          child: const Text('📱 تواصل مع خدمة العملاء', style: TextStyle(color: Color(0xFF25D366), fontWeight: FontWeight.w700)),
+          child: const Text('تواصل مع خدمة العملاء', style: TextStyle(color: Color(0xFF25D366), fontWeight: FontWeight.w700)),
         ),
       ],
     );
@@ -321,7 +333,7 @@ class _ClientsAndStatsTabState extends State<_ClientsAndStatsTab> {
     final maxCount = bankCounts.first.value;
     final totalCount = bankCounts.fold<int>(0, (s, e) => s + e.value);
 
-    Widget toggleBtn(String mode, String icon) {
+    Widget toggleBtn(String mode, IconData icon) {
       final active = chartMode == mode;
       return InkWell(
         borderRadius: BorderRadius.circular(8),
@@ -333,7 +345,7 @@ class _ClientsAndStatsTabState extends State<_ClientsAndStatsTab> {
             borderRadius: BorderRadius.circular(8),
             border: Border.all(color: active ? colors.gold : colors.borderSoft),
           ),
-          child: Text(icon, style: TextStyle(fontSize: 14, color: active ? colors.gold : colors.textMuted)),
+          child: Icon(icon, size: 16, color: active ? colors.gold : colors.textMuted),
         ),
       );
     }
@@ -353,7 +365,7 @@ class _ClientsAndStatsTabState extends State<_ClientsAndStatsTab> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text('توزيع البطاقات حسب المصرف', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: colors.text)),
-              Row(children: [toggleBtn('pie', '🥧'), const SizedBox(width: 6), toggleBtn('bar', '📊')]),
+              Row(children: [toggleBtn('pie', Icons.pie_chart), const SizedBox(width: 6), toggleBtn('bar', Icons.bar_chart)]),
             ],
           ),
           const SizedBox(height: 14),
@@ -452,9 +464,10 @@ class _ClientsAndStatsTabState extends State<_ClientsAndStatsTab> {
               child: Row(
                 children: [
                   Expanded(
-                    child: OutlinedButton(
+                    child: OutlinedButton.icon(
                       onPressed: clients.isEmpty ? null : () => _exportCsv(filtered),
-                      child: Text('📊 تصدير CSV', style: TextStyle(color: colors.gold, fontSize: 13)),
+                      icon: Icon(Icons.file_download_outlined, size: 16, color: colors.gold),
+                      label: Text('تصدير CSV', style: TextStyle(color: colors.gold, fontSize: 13)),
                     ),
                   ),
                 ],
@@ -470,8 +483,9 @@ class _ClientsAndStatsTabState extends State<_ClientsAndStatsTab> {
                       textAlign: TextAlign.right,
                       style: TextStyle(color: colors.text),
                       decoration: InputDecoration(
-                        hintText: '🔍 بحث بالاسم، الجوال، الرقم الوطني...',
+                        hintText: 'بحث بالاسم، الجوال، الرقم الوطني...',
                         hintStyle: TextStyle(color: colors.textMuted, fontSize: 13),
+                        prefixIcon: Icon(Icons.search, color: colors.textMuted, size: 20),
                         filled: true,
                         fillColor: colors.inputBg,
                         contentPadding: const EdgeInsets.all(12),
@@ -484,7 +498,7 @@ class _ClientsAndStatsTabState extends State<_ClientsAndStatsTab> {
                   IconButton(
                     style: IconButton.styleFrom(backgroundColor: colors.inputBg, side: BorderSide(color: colors.inputBorder)),
                     onPressed: () => setState(() => showFilters = !showFilters),
-                    icon: const Text('⚙️'),
+                    icon: Icon(Icons.tune, color: colors.textMuted),
                   ),
                 ],
               ),
@@ -500,19 +514,19 @@ class _ClientsAndStatsTabState extends State<_ClientsAndStatsTab> {
                     Text('الفرز:', style: TextStyle(fontSize: 11, color: colors.textMuted, fontWeight: FontWeight.w600)),
                     const SizedBox(height: 6),
                     _labeledChips(colors, sortBy, const {
-                      'newest': '📅 الأحدث',
-                      'oldest': '📅 الأقدم',
-                      'booking_asc': '📅 حجز ↑',
-                      'booking_desc': '📅 حجز ↓',
+                      'newest': 'الأحدث',
+                      'oldest': 'الأقدم',
+                      'booking_asc': 'حجز ↑',
+                      'booking_desc': 'حجز ↓',
                     }, (v) => setState(() => sortBy = v)),
                     const SizedBox(height: 10),
                     Text('الحالة:', style: TextStyle(fontSize: 11, color: colors.textMuted, fontWeight: FontWeight.w600)),
                     const SizedBox(height: 6),
                     _labeledChips(colors, filterStatus, {
                       'all': 'الكل ($total)',
-                      'booked': '✅ تم ($booked)',
-                      'pending': '⏳ انتظار ($pending)',
-                      'sold': '🔴 مباع ($sold)',
+                      'booked': 'تم ($booked)',
+                      'pending': 'انتظار ($pending)',
+                      'sold': 'مباع ($sold)',
                     }, (v) => setState(() => filterStatus = v)),
                     if (bankNames.isNotEmpty) ...[
                       const SizedBox(height: 10),
@@ -606,7 +620,7 @@ class _ClientsAndStatsTabState extends State<_ClientsAndStatsTab> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text('📝 ملاحظات', style: TextStyle(fontSize: 11, color: colors.textMuted, fontWeight: FontWeight.w600)),
+                  Text('ملاحظات', style: TextStyle(fontSize: 11, color: colors.textMuted, fontWeight: FontWeight.w600)),
                   TextField(
                     controller: noteCtrl,
                     maxLines: null,
@@ -641,7 +655,7 @@ class _ClientsAndStatsTabState extends State<_ClientsAndStatsTab> {
                                 },
                           child: saving
                               ? SizedBox(height: 14, width: 14, child: CircularProgressIndicator(strokeWidth: 2, color: colors.bg))
-                              : const Text('💾 حفظ الملاحظة', style: TextStyle(fontSize: 12)),
+                              : const Text('حفظ الملاحظة', style: TextStyle(fontSize: 12)),
                         ),
                       ),
                     ),
@@ -652,18 +666,20 @@ class _ClientsAndStatsTabState extends State<_ClientsAndStatsTab> {
             Row(
               children: [
                 Expanded(
-                  child: OutlinedButton(
+                  child: OutlinedButton.icon(
                     style: OutlinedButton.styleFrom(backgroundColor: colors.goldSoft, side: BorderSide(color: colors.borderSoft), padding: const EdgeInsets.symmetric(vertical: 6)),
                     onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ClientFormScreen(existing: c))),
-                    child: Text('✏️ تعديل', style: TextStyle(color: colors.gold, fontSize: 12)),
+                    icon: Icon(Icons.edit_outlined, size: 14, color: colors.gold),
+                    label: Text('تعديل', style: TextStyle(color: colors.gold, fontSize: 12)),
                   ),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: OutlinedButton(
+                  child: OutlinedButton.icon(
                     style: OutlinedButton.styleFrom(backgroundColor: const Color(0x1AE74C3C), side: const BorderSide(color: Color(0x4DE74C3C)), padding: const EdgeInsets.symmetric(vertical: 6)),
                     onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ClientDetailScreen(client: c))),
-                    child: const Text('🗑 حذف', style: TextStyle(color: Color(0xFFE74C3C), fontSize: 12)),
+                    icon: const Icon(Icons.delete_outline, size: 14, color: Color(0xFFE74C3C)),
+                    label: const Text('حذف', style: TextStyle(color: Color(0xFFE74C3C), fontSize: 12)),
                   ),
                 ),
               ],
@@ -675,15 +691,22 @@ class _ClientsAndStatsTabState extends State<_ClientsAndStatsTab> {
   }
 
   Widget _statusBadge(Client c) {
-    final (bg, border, text, label) = c.isSold
-        ? (const Color(0x1AE74C3C), const Color(0x4DE74C3C), const Color(0xFFF8F6F0), '🔴 مباع')
+    final (bg, border, text, icon, label) = c.isSold
+        ? (const Color(0x1AE74C3C), const Color(0x4DE74C3C), const Color(0xFFF8F6F0), Icons.sell, 'مباع')
         : c.cardBooked
-            ? (const Color(0x1A2ECC71), const Color(0x4D2ECC71), const Color(0xFFF8F6F0), '✅ تم')
-            : (const Color(0x1AF39C12), const Color(0x4DF39C12), const Color(0xFFF8F6F0), '⏳ انتظار');
+            ? (const Color(0x1A2ECC71), const Color(0x4D2ECC71), const Color(0xFFF8F6F0), Icons.check_circle, 'تم')
+            : (const Color(0x1AF39C12), const Color(0x4DF39C12), const Color(0xFFF8F6F0), Icons.hourglass_bottom, 'انتظار');
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(color: bg, border: Border.all(color: border), borderRadius: BorderRadius.circular(20)),
-      child: Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: text)),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 11, color: text),
+          const SizedBox(width: 3),
+          Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: text)),
+        ],
+      ),
     );
   }
 }

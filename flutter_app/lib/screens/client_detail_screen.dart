@@ -28,7 +28,7 @@ class ClientDetailScreen extends StatelessWidget {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('🗑 حذف العميل'),
+        title: const Text('حذف العميل'),
         content: Text('هل تريد حذف "${client.name}"؟\nلا يمكن التراجع عن هذا الإجراء.'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('إلغاء')),
@@ -48,7 +48,7 @@ class ClientDetailScreen extends StatelessWidget {
   void _copy(BuildContext context, String value, String label) {
     if (value.isEmpty || value == '—') return;
     Clipboard.setData(ClipboardData(text: value));
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('✅ تم نسخ $label')));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تم نسخ $label')));
   }
 
   @override
@@ -67,10 +67,10 @@ class ClientDetailScreen extends StatelessWidget {
       _Row('المبلغ', client.amount.isEmpty ? '—' : '${client.amountValue.toStringAsFixed(2)} ${client.currency}'),
       _Row('تم الشراء من طرف', client.purchasedBy.isEmpty ? '—' : client.purchasedBy),
       _Row('نوع الحجز', client.paymentType.isEmpty ? '—' : client.paymentType),
-      _Row('حالة البطاقة', client.cardBooked ? '✅ تم الحجز' : '⏳ لم يتم'),
+      _Row('حالة البطاقة', client.cardBooked ? 'تم الحجز' : 'لم يتم'),
       _Row('تاريخ الحجز', client.bookingDate.isEmpty ? '—' : client.bookingDate),
       _Row('الرقم السري', client.pinCode.isEmpty ? '—' : client.pinCode, canCopy: true),
-      _Row('حالة البيع', client.isSold ? '🔴 تم البيع' : '🟢 لم يُباع'),
+      _Row('حالة البيع', client.isSold ? 'تم البيع' : 'لم يُباع'),
       _Row('بيعت إلى', client.soldTo.isEmpty ? '—' : client.soldTo),
       _Row('ملاحظات', client.notes.isEmpty ? '—' : client.notes),
       _Row('تاريخ الإضافة', _fmt(client.createdAt)),
@@ -78,10 +78,10 @@ class ClientDetailScreen extends StatelessWidget {
     ];
 
     final sections = [
-      ('📋 البيانات الأساسية', rows.sublist(0, 4)),
-      ('🏦 البيانات المصرفية', rows.sublist(4, 8)),
-      ('💳 بيانات البطاقة', rows.sublist(8, 16)),
-      ('📝 معلومات إضافية', rows.sublist(16)),
+      ('البيانات الأساسية', rows.sublist(0, 4)),
+      ('البيانات المصرفية', rows.sublist(4, 8)),
+      ('بيانات البطاقة', rows.sublist(8, 16)),
+      ('معلومات إضافية', rows.sublist(16)),
     ];
 
     return Scaffold(
@@ -89,7 +89,7 @@ class ClientDetailScreen extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: colors.card,
         foregroundColor: colors.gold,
-        title: Text('👤 ${client.name}'),
+        title: Text(client.name),
         actions: [
           IconButton(
             icon: const Icon(Icons.edit),
@@ -131,7 +131,7 @@ class ClientDetailScreen extends StatelessWidget {
                             IconButton(
                               iconSize: 16,
                               visualDensity: VisualDensity.compact,
-                              icon: const Text('📋'),
+                              icon: const Icon(Icons.content_copy),
                               onPressed: () => _copy(context, r.value, r.label),
                             ),
                         ],
@@ -156,10 +156,11 @@ class ClientDetailScreen extends StatelessWidget {
               const SizedBox(width: 8),
               Expanded(
                 flex: 2,
-                child: FilledButton(
+                child: FilledButton.icon(
                   style: FilledButton.styleFrom(backgroundColor: const Color(0xFFE74C3C)),
                   onPressed: () => _delete(context),
-                  child: const Text('🗑 حذف'),
+                  icon: const Icon(Icons.delete_outline, size: 16),
+                  label: const Text('حذف'),
                 ),
               ),
             ],

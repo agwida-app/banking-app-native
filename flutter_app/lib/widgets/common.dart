@@ -21,7 +21,7 @@ class OfflineBanner extends StatelessWidget {
       child: const Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text('📡', style: TextStyle(fontSize: 13)),
+          Icon(Icons.wifi_off, size: 14, color: Color(0xFFF39C12)),
           SizedBox(width: 6),
           Flexible(
             child: Text(
@@ -200,7 +200,7 @@ class SelectChips extends StatelessWidget {
 }
 
 class StatCard extends StatelessWidget {
-  final String icon;
+  final IconData icon;
   final String value;
   final String label;
   final Color valueColor;
@@ -219,7 +219,7 @@ class StatCard extends StatelessWidget {
       ),
       child: Column(
         children: [
-          Text(icon, style: const TextStyle(fontSize: 24)),
+          Icon(icon, size: 24, color: valueColor),
           const SizedBox(height: 6),
           Text(value, style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: valueColor)),
           const SizedBox(height: 3),
