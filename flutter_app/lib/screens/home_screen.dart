@@ -36,8 +36,9 @@ class _HomeScreenState extends State<HomeScreen> {
     final theme = context.watch<ThemeController>();
 
     final pages = [
-      _ClientsAndStatsTab(subDays: widget.subDays),
-      const ExpensesScreen(embedded: true),
+      _ClientsAndStatsTab(key: const ValueKey('clients'), subDays: widget.subDays, mode: 'clients'),
+      _ClientsAndStatsTab(key: const ValueKey('stats'), subDays: widget.subDays, mode: 'stats'),
+      const ExpensesScreen(key: ValueKey('expenses'), embedded: true),
     ];
 
     return Scaffold(
@@ -63,13 +64,20 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-      body: pages[navIndex],
+      body: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 180),
+        switchInCurve: Curves.easeOut,
+        switchOutCurve: Curves.easeIn,
+        transitionBuilder: (child, animation) => FadeTransition(opacity: animation, child: child),
+        child: pages[navIndex],
+      ),
       bottomNavigationBar: NavigationBar(
         backgroundColor: colors.card,
         selectedIndex: navIndex,
         onDestinationSelected: (i) => setState(() => navIndex = i),
         destinations: const [
           NavigationDestination(icon: Icon(Icons.people_alt_outlined), label: 'العملاء'),
+          NavigationDestination(icon: Icon(Icons.bar_chart_outlined), label: 'الإحصائيات'),
           NavigationDestination(icon: Icon(Icons.account_balance_wallet_outlined), label: 'المصروفات'),
         ],
       ),
@@ -79,14 +87,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
 class _ClientsAndStatsTab extends StatefulWidget {
   final int? subDays;
-  const _ClientsAndStatsTab({this.subDays});
+  final String mode; // 'clients' or 'stats'
+  const _ClientsAndStatsTab({super.key, this.subDays, required this.mode});
 
   @override
   State<_ClientsAndStatsTab> createState() => _ClientsAndStatsTabState();
 }
 
 class _ClientsAndStatsTabState extends State<_ClientsAndStatsTab> {
-  String tab = 'clients';
   String search = '';
   String filterStatus = 'all';
   String filterBank = 'all';
@@ -206,19 +214,8 @@ class _ClientsAndStatsTabState extends State<_ClientsAndStatsTab> {
                   ],
                 ),
               ),
-            Container(
-              margin: const EdgeInsets.all(12),
-              padding: const EdgeInsets.all(3),
-              decoration: BoxDecoration(color: colors.overlay, borderRadius: BorderRadius.circular(10)),
-              child: Row(
-                children: [
-                  _segButton('clients', 'العملاء', colors),
-                  _segButton('stats', 'الإحصائيات', colors),
-                ],
-              ),
-            ),
             Expanded(
-              child: tab == 'stats'
+              child: widget.mode == 'stats'
                   ? _buildStats(colors, clients, total, booked, pending, sold, totalAmt)
                   : _buildClients(colors, loading, clients, filtered, bankNames, total, booked, pending, sold),
             ),
@@ -244,22 +241,6 @@ class _ClientsAndStatsTabState extends State<_ClientsAndStatsTab> {
           side: BorderSide(color: isSel ? colors.gold : colors.inputBorder),
         );
       }).toList(),
-    );
-  }
-
-  Widget _segButton(String value, String label, AppColors colors) {
-    final isSel = tab == value;
-    return Expanded(
-      child: GestureDetector(
-        onTap: () => setState(() => tab = value),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          decoration: BoxDecoration(color: isSel ? colors.gold : Colors.transparent, borderRadius: BorderRadius.circular(7)),
-          alignment: Alignment.center,
-          child: Text(label,
-              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: isSel ? colors.bg : colors.textMuted)),
-        ),
-      ),
     );
   }
 
