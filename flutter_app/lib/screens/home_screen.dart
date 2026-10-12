@@ -17,6 +17,7 @@ import 'auth_screen.dart' show whatsappUrl;
 import 'client_detail_screen.dart';
 import 'client_form_screen.dart';
 import 'expenses_screen.dart';
+import 'settings_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final int? subDays;
@@ -39,6 +40,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _ClientsAndStatsTab(key: const ValueKey('clients'), subDays: widget.subDays, mode: 'clients'),
       _ClientsAndStatsTab(key: const ValueKey('stats'), subDays: widget.subDays, mode: 'stats'),
       const ExpensesScreen(key: ValueKey('expenses'), embedded: true),
+      const SettingsScreen(key: ValueKey('settings')),
     ];
 
     return Scaffold(
@@ -79,6 +81,7 @@ class _HomeScreenState extends State<HomeScreen> {
           NavigationDestination(icon: Icon(Icons.people_alt_outlined), label: 'العملاء'),
           NavigationDestination(icon: Icon(Icons.bar_chart_outlined), label: 'الإحصائيات'),
           NavigationDestination(icon: Icon(Icons.account_balance_wallet_outlined), label: 'المصروفات'),
+          NavigationDestination(icon: Icon(Icons.settings_outlined), label: 'الإعدادات'),
         ],
       ),
     );
