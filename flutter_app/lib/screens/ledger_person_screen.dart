@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../models/ledger.dart';
 import '../theme/app_theme.dart';
@@ -211,6 +212,39 @@ class _LedgerPersonScreenState extends State<LedgerPersonScreen> {
     if (mounted) Navigator.pop(context);
   }
 
+  Future<void> _shareStatement() async {
+    final user = FirebaseAuth.instance.currentUser!;
+    final snap = await FirebaseFirestore.instance
+        .collection('ledgerEntries')
+        .where('uid', isEqualTo: user.uid)
+        .where('personId', isEqualTo: widget.person.id)
+        .orderBy('date', descending: true)
+        .get();
+    final entries = snap.docs.map((d) => LedgerEntry.fromDoc(d.id, d.data())).toList();
+
+    if (entries.isEmpty) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('لا توجد معاملات للمشاركة')));
+      return;
+    }
+
+    final balance = entries.fold<double>(0, (s, e) => s + (e.type == LedgerEntryType.lana ? e.amount : -e.amount));
+    final isZero = balance.abs() < 0.005;
+    final balanceLabel = isZero ? 'الحساب متصافٍ' : (balance > 0 ? 'لنا عنده' : 'له عندنا');
+
+    final buffer = StringBuffer()
+      ..writeln('كشف حساب — ${widget.person.name}')
+      ..writeln('——————————————');
+    for (final e in entries) {
+      final sign = e.type == LedgerEntryType.lana ? 'لنا' : 'لهم';
+      buffer.writeln('${_fmtDate(e.date)} | $sign | ${e.amount.toStringAsFixed(2)} د.ل | ${e.reason}');
+    }
+    buffer
+      ..writeln('——————————————')
+      ..writeln('$balanceLabel: ${balance.abs().toStringAsFixed(2)} د.ل');
+
+    await SharePlus.instance.share(ShareParams(text: buffer.toString(), subject: 'كشف حساب - ${widget.person.name}'));
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = context.watch<ThemeController>().colors;
@@ -223,6 +257,7 @@ class _LedgerPersonScreenState extends State<LedgerPersonScreen> {
         foregroundColor: colors.gold,
         title: Text(widget.person.name),
         actions: [
+          IconButton(icon: const Icon(Icons.share_outlined), onPressed: _shareStatement),
           IconButton(icon: const Icon(Icons.delete_outline, color: Color(0xFFE74C3C)), onPressed: _deletePerson),
         ],
       ),
