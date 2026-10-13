@@ -17,6 +17,8 @@ class ExpensesScreen extends StatefulWidget {
 }
 
 class _ExpensesScreenState extends State<ExpensesScreen> {
+  String search = '';
+
   void _addPerson() {
     final colors = context.read<ThemeController>().colors;
     final nameCtrl = TextEditingController();
@@ -115,6 +117,43 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     );
   }
 
+  Widget _summaryTile(AppColors colors, String label, String value, Color color) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 6),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.12),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: color.withOpacity(0.3)),
+        ),
+        child: Column(
+          children: [
+            Text(label, style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w600)),
+            const SizedBox(height: 4),
+            Text(value, style: TextStyle(color: color, fontSize: 16, fontWeight: FontWeight.w900)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _searchField(AppColors colors) {
+    return TextField(
+      textAlign: TextAlign.right,
+      style: TextStyle(color: colors.fieldText),
+      decoration: InputDecoration(
+        hintText: 'بحث بالاسم...',
+        hintStyle: TextStyle(color: colors.textMuted, fontSize: 13),
+        prefixIcon: Icon(Icons.search, color: colors.textMuted, size: 20),
+        filled: true,
+        fillColor: colors.fieldBg,
+        contentPadding: const EdgeInsets.all(12),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: colors.fieldBorder)),
+      ),
+      onChanged: (v) => setState(() => search = v),
+    );
+  }
+
   Widget _addFab(AppColors colors) {
     return Positioned(
       bottom: 16,
@@ -167,10 +206,35 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
               return net;
             }
 
+            final totalLana = allEntries.where((e) => e.type == LedgerEntryType.lana).fold<double>(0, (s, e) => s + e.amount);
+            final totalLahom = allEntries.where((e) => e.type == LedgerEntryType.lahom).fold<double>(0, (s, e) => s + e.amount);
+            final net = totalLana - totalLahom;
+
+            final q = search.trim().toLowerCase();
+            final filteredPeople = q.isEmpty ? people : people.where((p) => p.name.toLowerCase().contains(q)).toList();
+
             return Column(
               children: [
                 OfflineBanner(isOffline: isOffline),
                 _header(colors),
+                if (people.isNotEmpty) ...[
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+                    child: Row(
+                      children: [
+                        _summaryTile(colors, 'لنا', totalLana.toStringAsFixed(0), const Color(0xFF2ECC71)),
+                        const SizedBox(width: 10),
+                        _summaryTile(colors, 'لهم', totalLahom.toStringAsFixed(0), const Color(0xFFE74C3C)),
+                        const SizedBox(width: 10),
+                        _summaryTile(colors, 'الصافي', '${net >= 0 ? '+' : ''}${net.toStringAsFixed(0)}', net >= 0 ? colors.gold : const Color(0xFFE74C3C)),
+                      ],
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                    child: _searchField(colors),
+                  ),
+                ],
                 const SizedBox(height: 12),
                 Expanded(
                   child: loading
@@ -186,11 +250,13 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                                 ],
                               ),
                             )
-                          : ListView.builder(
-                              padding: const EdgeInsets.fromLTRB(16, 4, 16, 88),
-                              itemCount: people.length,
-                              itemBuilder: (context, i) => _personCard(colors, people[i], balanceFor(people[i].id)),
-                            ),
+                          : filteredPeople.isEmpty
+                              ? Center(child: Text('لا توجد نتائج', style: TextStyle(color: colors.textMuted)))
+                              : ListView.builder(
+                                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 88),
+                                  itemCount: filteredPeople.length,
+                                  itemBuilder: (context, i) => _personCard(colors, filteredPeople[i], balanceFor(filteredPeople[i].id)),
+                                ),
                 ),
               ],
             );
