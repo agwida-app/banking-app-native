@@ -477,15 +477,15 @@ class _ClientsAndStatsTabState extends State<_ClientsAndStatsTab> {
                   Expanded(
                     child: TextField(
                       textAlign: TextAlign.right,
-                      style: TextStyle(color: colors.text),
+                      style: TextStyle(color: colors.fieldText),
                       decoration: InputDecoration(
                         hintText: 'بحث بالاسم، الجوال، الرقم الوطني...',
                         hintStyle: TextStyle(color: colors.textMuted, fontSize: 13),
                         prefixIcon: Icon(Icons.search, color: colors.textMuted, size: 20),
                         filled: true,
-                        fillColor: colors.inputBg,
+                        fillColor: colors.fieldBg,
                         contentPadding: const EdgeInsets.all(12),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: colors.inputBorder)),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
                       ),
                       onChanged: (v) => setState(() => search = v),
                     ),

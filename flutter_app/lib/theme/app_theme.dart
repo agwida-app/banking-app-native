@@ -15,6 +15,8 @@ class AppColors {
   final Color inputBg;
   final Color inputBorder;
   final Color overlay;
+  final Color fieldBg;
+  final Color fieldText;
 
   const AppColors({
     required this.mode,
@@ -30,6 +32,8 @@ class AppColors {
     required this.inputBg,
     required this.inputBorder,
     required this.overlay,
+    required this.fieldBg,
+    required this.fieldText,
   });
 }
 
@@ -47,6 +51,10 @@ const darkColors = AppColors(
   inputBg: Color(0x0FFFFFFF),
   inputBorder: Color(0x1AFFFFFF),
   overlay: Color(0x40000000),
+  // Text input fields get a dedicated, clearly-white surface (instead of
+  // blending into the dark navy card) so typed fields stand out crisply.
+  fieldBg: Color(0xFFF8F6F0),
+  fieldText: Color(0xFF0A1628),
 );
 
 const lightColors = AppColors(
@@ -63,6 +71,10 @@ const lightColors = AppColors(
   inputBg: Color(0x0A0A1628),
   inputBorder: Color(0x1F0A1628),
   overlay: Color(0x14000000),
+  // A touch darker than the white card so fields still read as distinct
+  // boxes instead of disappearing into it.
+  fieldBg: Color(0xFFF5F3ED),
+  fieldText: Color(0xFF0A1628),
 );
 
 const _themeKey = 'app_theme_mode';
