@@ -125,26 +125,51 @@ class PrimaryButton extends StatelessWidget {
     this.foreground,
   });
 
+  static const double _height = 48;
+  static const double _circleSize = 48;
+
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      child: FilledButton(
-        style: FilledButton.styleFrom(
-          backgroundColor: background ?? colors.gold,
-          foregroundColor: foreground ?? colors.bg,
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        ),
-        onPressed: loading ? null : onPressed,
-        child: loading
-            ? SizedBox(
-                height: 20,
-                width: 20,
-                child: CircularProgressIndicator(strokeWidth: 2, color: foreground ?? colors.bg),
-              )
-            : Text(label, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
-      ),
+    final fg = foreground ?? colors.bg;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return Center(
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 280),
+            curve: Curves.easeInOutCubic,
+            width: loading ? _circleSize : constraints.maxWidth,
+            height: _height,
+            decoration: BoxDecoration(
+              color: background ?? colors.gold,
+              borderRadius: BorderRadius.circular(loading ? _circleSize / 2 : 10),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: loading ? null : onPressed,
+                child: Center(
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 150),
+                    child: loading
+                        ? SizedBox(
+                            key: const ValueKey('spinner'),
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: fg),
+                          )
+                        : Text(
+                            label,
+                            key: const ValueKey('label'),
+                            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: fg),
+                          ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }
@@ -221,11 +246,39 @@ class StatCard extends StatelessWidget {
         children: [
           Icon(icon, size: 24, color: valueColor),
           const SizedBox(height: 6),
-          Text(value, style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: valueColor)),
+          _CountUpText(value: value, style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: valueColor)),
           const SizedBox(height: 3),
           Text(label, textAlign: TextAlign.center, style: TextStyle(fontSize: 11, color: colors.textMuted)),
         ],
       ),
+    );
+  }
+}
+
+/// Animates the leading number in [value] (e.g. "128" or "45,230 د.ل") from
+/// its previous displayed amount up to the new one, keeping any surrounding
+/// text as-is. Falls back to a plain Text if no number is found.
+class _CountUpText extends StatelessWidget {
+  final String value;
+  final TextStyle style;
+  const _CountUpText({required this.value, required this.style});
+
+  @override
+  Widget build(BuildContext context) {
+    final match = RegExp(r'[\d]+(\.\d+)?').firstMatch(value);
+    if (match == null) return Text(value, style: style);
+    final target = double.parse(match.group(0)!);
+    final isDecimal = match.group(0)!.contains('.');
+    final prefix = value.substring(0, match.start);
+    final suffix = value.substring(match.end);
+    return TweenAnimationBuilder<double>(
+      duration: const Duration(milliseconds: 800),
+      curve: Curves.easeOutCubic,
+      tween: Tween(begin: 0, end: target),
+      builder: (context, v, _) {
+        final numText = isDecimal ? v.toStringAsFixed(match.group(1)!.length - 1) : v.round().toString();
+        return Text('$prefix$numText$suffix', style: style);
+      },
     );
   }
 }

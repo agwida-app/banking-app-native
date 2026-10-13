@@ -151,10 +151,7 @@ class _AppGateState extends State<AppGate> {
     final colors = context.watch<ThemeController>().colors;
 
     if (!ready || (user != null && subStatus == null)) {
-      return Scaffold(
-        backgroundColor: colors.bg,
-        body: Center(child: CircularProgressIndicator(color: colors.gold)),
-      );
+      return _SplashLoading(colors: colors);
     }
 
     if (user != null && subStatus == 'device_limit') {
@@ -202,4 +199,50 @@ class AdminRoute extends StatelessWidget {
   const AdminRoute({super.key});
   @override
   Widget build(BuildContext context) => const AdminScreen();
+}
+
+class _SplashLoading extends StatefulWidget {
+  final AppColors colors;
+  const _SplashLoading({required this.colors});
+
+  @override
+  State<_SplashLoading> createState() => _SplashLoadingState();
+}
+
+class _SplashLoadingState extends State<_SplashLoading> with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 700))..forward();
+  late final Animation<double> _fade = CurvedAnimation(parent: _controller, curve: Curves.easeOut);
+  late final Animation<double> _scale = Tween(begin: 0.85, end: 1.0).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutBack));
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = widget.colors;
+    return Scaffold(
+      backgroundColor: colors.bg,
+      body: Center(
+        child: FadeTransition(
+          opacity: _fade,
+          child: ScaleTransition(
+            scale: _scale,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.credit_card, size: 56, color: colors.gold),
+                const SizedBox(height: 14),
+                Text('إدارة بطاقاتك', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: colors.text)),
+                const SizedBox(height: 24),
+                SizedBox(width: 26, height: 26, child: CircularProgressIndicator(strokeWidth: 2.4, color: colors.gold)),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }

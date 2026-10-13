@@ -67,10 +67,16 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
       body: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 180),
-        switchInCurve: Curves.easeOut,
+        duration: const Duration(milliseconds: 240),
+        switchInCurve: Curves.easeOutCubic,
         switchOutCurve: Curves.easeIn,
-        transitionBuilder: (child, animation) => FadeTransition(opacity: animation, child: child),
+        transitionBuilder: (child, animation) => FadeTransition(
+          opacity: animation,
+          child: ScaleTransition(
+            scale: Tween(begin: 0.98, end: 1.0).animate(animation),
+            child: child,
+          ),
+        ),
         child: pages[navIndex],
       ),
       bottomNavigationBar: NavigationBar(
