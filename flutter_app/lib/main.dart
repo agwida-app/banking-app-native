@@ -6,6 +6,8 @@ import 'app_gate.dart';
 import 'firebase_options.dart';
 import 'theme/app_theme.dart';
 
+final navigatorKey = GlobalKey<NavigatorState>();
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
@@ -24,6 +26,7 @@ class BankingApp extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = context.watch<ThemeController>().isDark;
     return MaterialApp(
+      navigatorKey: navigatorKey,
       title: 'إدارة بطاقاتك',
       debugShowCheckedModeBanner: false,
       locale: const Locale('ar'),

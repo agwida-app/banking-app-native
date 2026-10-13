@@ -1,16 +1,20 @@
+import 'dart:async';
 import 'dart:io' show Platform;
 import 'dart:math';
 
+import 'package:app_links/app_links.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'main.dart' show navigatorKey;
 import 'screens/activation_screen.dart';
 import 'screens/admin_screen.dart';
 import 'screens/auth_screen.dart';
 import 'screens/home_screen.dart';
+import 'screens/reset_password_confirm_screen.dart';
 import 'theme/app_theme.dart';
 
 const adminUid = 'yel5HGeqTfXRUmraIzfZK4XVhrS2';
@@ -37,6 +41,9 @@ class _AppGateState extends State<AppGate> {
   String? subStatus; // null(loading) | none | expired | active | device_limit
   int? subDays;
 
+  final _appLinks = AppLinks();
+  StreamSubscription<Uri>? _linkSub;
+
   @override
   void initState() {
     super.initState();
@@ -51,6 +58,30 @@ class _AppGateState extends State<AppGate> {
       });
       if (u != null) _watchSubscription(u);
     });
+    _initDeepLinks();
+  }
+
+  Future<void> _initDeepLinks() async {
+    try {
+      final initial = await _appLinks.getInitialLink();
+      if (initial != null) _handleLink(initial);
+    } catch (_) {}
+    _linkSub = _appLinks.uriLinkStream.listen(_handleLink, onError: (_) {});
+  }
+
+  void _handleLink(Uri uri) {
+    if (uri.queryParameters['mode'] != 'resetPassword') return;
+    final oobCode = uri.queryParameters['oobCode'];
+    if (oobCode == null) return;
+    navigatorKey.currentState?.push(
+      MaterialPageRoute(builder: (_) => ResetPasswordConfirmScreen(oobCode: oobCode)),
+    );
+  }
+
+  @override
+  void dispose() {
+    _linkSub?.cancel();
+    super.dispose();
   }
 
   void _watchSubscription(User u) {

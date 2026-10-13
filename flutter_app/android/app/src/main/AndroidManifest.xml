@@ -24,6 +24,20 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+            <!-- Catches the password-reset link Firebase emails (default authDomain
+                 action handler) so it opens this app instead of a browser. Not an
+                 autoVerify App Link: firebaseapp.com is a shared Google domain whose
+                 assetlinks.json we don't control, so Android may show an "open with"
+                 chooser the first time instead of opening the app silently. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data
+                    android:scheme="https"
+                    android:host="agwida-39e21.firebaseapp.com"
+                    android:pathPrefix="/__/auth/action"/>
+            </intent-filter>
         </activity>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
