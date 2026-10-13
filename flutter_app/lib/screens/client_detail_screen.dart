@@ -92,8 +92,8 @@ class ClientDetailScreen extends StatelessWidget {
         title: Text(client.name),
         actions: [
           IconButton(
-            icon: const Icon(Icons.edit),
-            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ClientFormScreen(existing: client))),
+            icon: const Icon(Icons.delete_outline, color: Color(0xFFE74C3C)),
+            onPressed: () => _delete(context),
           ),
         ],
       ),
@@ -157,10 +157,10 @@ class ClientDetailScreen extends StatelessWidget {
               Expanded(
                 flex: 2,
                 child: FilledButton.icon(
-                  style: FilledButton.styleFrom(backgroundColor: const Color(0xFFE74C3C)),
-                  onPressed: () => _delete(context),
-                  icon: const Icon(Icons.delete_outline, size: 16),
-                  label: const Text('حذف'),
+                  style: FilledButton.styleFrom(backgroundColor: colors.gold, foregroundColor: colors.bg),
+                  onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ClientFormScreen(existing: client))),
+                  icon: const Icon(Icons.edit_outlined, size: 16),
+                  label: const Text('تعديل'),
                 ),
               ),
             ],
