@@ -473,7 +473,7 @@ class _ClientsAndStatsTabState extends State<_ClientsAndStatsTab> {
                         filled: true,
                         fillColor: colors.fieldBg,
                         contentPadding: const EdgeInsets.all(12),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: colors.fieldBorder)),
                       ),
                       onChanged: (v) => setState(() => search = v),
                     ),
