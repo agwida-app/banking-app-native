@@ -26,6 +26,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool nameMsgIsError = false;
   String? pwMsg;
   bool pwMsgIsError = false;
+  bool profileOpen = false;
+  bool passwordOpen = false;
 
   @override
   void initState() {
@@ -121,7 +123,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (mounted) setState(() => savingPassword = false);
   }
 
-  Widget _sectionCard(AppColors colors, {required String title, required IconData icon, required List<Widget> children}) {
+  Widget _sectionCard(
+    AppColors colors, {
+    required String title,
+    required IconData icon,
+    required List<Widget> children,
+    bool? expanded,
+    VoidCallback? onToggle,
+  }) {
+    final collapsible = onToggle != null;
+    final isOpen = expanded ?? true;
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       padding: const EdgeInsets.all(16),
@@ -129,15 +140,37 @@ class _SettingsScreenState extends State<SettingsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            children: [
-              Icon(icon, size: 18, color: colors.gold),
-              const SizedBox(width: 8),
-              Text(title, style: TextStyle(color: colors.text, fontSize: 14, fontWeight: FontWeight.w700)),
-            ],
+          InkWell(
+            onTap: onToggle,
+            borderRadius: BorderRadius.circular(10),
+            child: Row(
+              children: [
+                Icon(icon, size: 18, color: colors.gold),
+                const SizedBox(width: 8),
+                Expanded(child: Text(title, style: TextStyle(color: colors.text, fontSize: 14, fontWeight: FontWeight.w700))),
+                if (collapsible)
+                  AnimatedRotation(
+                    turns: isOpen ? 0.5 : 0,
+                    duration: const Duration(milliseconds: 200),
+                    child: Icon(Icons.keyboard_arrow_down, size: 20, color: colors.textMuted),
+                  ),
+              ],
+            ),
           ),
-          const SizedBox(height: 14),
-          ...children,
+          AnimatedSize(
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.easeInOut,
+            alignment: Alignment.topCenter,
+            child: !isOpen
+                ? const SizedBox(width: double.infinity)
+                : Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const SizedBox(height: 14),
+                      ...children,
+                    ],
+                  ),
+          ),
         ],
       ),
     );
@@ -166,6 +199,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             colors,
             title: 'الملف الشخصي',
             icon: Icons.person_outline,
+            expanded: profileOpen,
+            onToggle: () => setState(() => profileOpen = !profileOpen),
             children: [
               Text('البريد الإلكتروني', style: TextStyle(fontSize: 12, color: colors.textSoft)),
               const SizedBox(height: 5),
@@ -185,6 +220,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             colors,
             title: 'تغيير كلمة المرور',
             icon: Icons.lock_outline,
+            expanded: passwordOpen,
+            onToggle: () => setState(() => passwordOpen = !passwordOpen),
             children: [
               ThemedField(label: 'كلمة المرور الحالية', controller: currentPwCtrl, colors: colors, obscure: true),
               ThemedField(label: 'كلمة المرور الجديدة', controller: newPwCtrl, colors: colors, obscure: true),
