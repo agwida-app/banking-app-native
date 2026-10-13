@@ -3,25 +3,10 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../models/expense.dart';
+import '../models/ledger.dart';
 import '../theme/app_theme.dart';
 import '../widgets/common.dart';
-
-String _fmtDate(DateTime d) => '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
-
-const _arMonths = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
-String _fmtDateHuman(DateTime d) => '${d.day} ${_arMonths[d.month - 1]}';
-
-const _categoryIcons = {
-  'إيجار': Icons.home_outlined,
-  'مطعم': Icons.restaurant_outlined,
-  'تسوق': Icons.shopping_bag_outlined,
-  'فواتير': Icons.receipt_long_outlined,
-  'شراء بطاقة': Icons.credit_card,
-  'صديق': Icons.person_outline,
-  'ادخار': Icons.account_balance_outlined,
-  'أخرى': Icons.category_outlined,
-};
+import 'ledger_person_screen.dart';
 
 class ExpensesScreen extends StatefulWidget {
   final bool embedded;
@@ -32,17 +17,9 @@ class ExpensesScreen extends StatefulWidget {
 }
 
 class _ExpensesScreenState extends State<ExpensesScreen> {
-  String filterKind = 'all'; // all | expense | income
-  String filterCategory = 'all';
-
-  void _openForm({Expense? existing}) {
+  void _addPerson() {
     final colors = context.read<ThemeController>().colors;
-    final amountCtrl = TextEditingController(text: existing?.amount.toStringAsFixed(2));
-    final personCtrl = TextEditingController(text: existing?.person);
-    final noteCtrl = TextEditingController(text: existing?.note);
-    var kind = existing?.kind ?? ExpenseKind.expense;
-    var category = existing?.category ?? expenseCategories.first;
-    var date = existing?.date ?? DateTime.now();
+    final nameCtrl = TextEditingController();
     var saving = false;
     String? err;
 
@@ -54,180 +31,66 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setSheetState) => Padding(
           padding: EdgeInsets.only(left: 16, right: 16, top: 10, bottom: MediaQuery.of(ctx).viewInsets.bottom + 16),
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    margin: const EdgeInsets.only(bottom: 16),
-                    decoration: BoxDecoration(color: colors.borderSoft, borderRadius: BorderRadius.circular(2)),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(color: colors.borderSoft, borderRadius: BorderRadius.circular(2)),
+                ),
+              ),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(color: colors.goldSoft, borderRadius: BorderRadius.circular(10)),
+                    child: Icon(Icons.person_add_alt_outlined, size: 18, color: colors.gold),
                   ),
-                ),
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(color: colors.goldSoft, borderRadius: BorderRadius.circular(10)),
-                      child: Icon(existing == null ? Icons.add_circle_outline : Icons.edit_outlined, size: 18, color: colors.gold),
-                    ),
-                    const SizedBox(width: 10),
-                    Text(existing == null ? 'حركة مالية جديدة' : 'تعديل الحركة',
-                        style: TextStyle(color: colors.text, fontSize: 16, fontWeight: FontWeight.w900)),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                if (err != null) MessageBanner(text: err!),
-                Text('نوع الحركة', style: TextStyle(fontSize: 12, color: colors.textSoft)),
-                const SizedBox(height: 6),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _kindButton(
-                          colors, 'مصروف', Icons.arrow_downward, kind == ExpenseKind.expense, () => setSheetState(() => kind = ExpenseKind.expense)),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: _kindButton(
-                          colors, 'دخل', Icons.arrow_upward, kind == ExpenseKind.income, () => setSheetState(() => kind = ExpenseKind.income)),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 14),
-                ThemedField(
-                  label: 'المبلغ (د.ل) *',
-                  controller: amountCtrl,
-                  colors: colors,
-                  hint: '0.00',
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                ),
-                Text('الفئة', style: TextStyle(fontSize: 12, color: colors.textSoft)),
-                const SizedBox(height: 6),
-                SelectChips(
-                  colors: colors,
-                  selected: category,
-                  options: expenseCategories,
-                  onSelect: (v) => setSheetState(() => category = v),
-                ),
-                const SizedBox(height: 14),
-                ThemedField(
-                  label: 'الشخص (اختياري — من أعطيت / من أخذت)',
-                  controller: personCtrl,
-                  colors: colors,
-                  hint: 'مثال: أحمد',
-                ),
-                Text('التاريخ', style: TextStyle(fontSize: 12, color: colors.textSoft)),
-                const SizedBox(height: 6),
-                OutlinedButton.icon(
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.all(12),
-                    side: BorderSide(color: colors.inputBorder),
-                    alignment: Alignment.centerRight,
-                  ),
-                  onPressed: () async {
-                    final picked = await showDatePicker(
-                      context: ctx,
-                      initialDate: date,
-                      firstDate: DateTime(2020),
-                      lastDate: DateTime(2100),
-                    );
-                    if (picked != null) setSheetState(() => date = picked);
-                  },
-                  icon: Icon(Icons.calendar_today_outlined, size: 15, color: colors.gold),
-                  label: Text(_fmtDate(date), style: TextStyle(color: colors.text)),
-                ),
-                const SizedBox(height: 14),
-                ThemedField(label: 'ملاحظة', controller: noteCtrl, colors: colors, maxLines: 2, hint: 'مثال: إيجار شهر يوليو'),
-                const SizedBox(height: 8),
-                PrimaryButton(
-                  label: 'حفظ',
-                  colors: colors,
-                  loading: saving,
-                  onPressed: () async {
-                    final amount = double.tryParse(amountCtrl.text.trim());
-                    if (amount == null || amount <= 0) {
-                      setSheetState(() => err = 'أدخل مبلغاً صحيحاً');
-                      return;
-                    }
-                    setSheetState(() {
-                      saving = true;
-                      err = null;
+                  const SizedBox(width: 10),
+                  Text('شخص جديد', style: TextStyle(color: colors.text, fontSize: 16, fontWeight: FontWeight.w900)),
+                ],
+              ),
+              const SizedBox(height: 16),
+              if (err != null) MessageBanner(text: err!),
+              ThemedField(label: 'الاسم', controller: nameCtrl, colors: colors, hint: 'اسم الشخص'),
+              const SizedBox(height: 8),
+              PrimaryButton(
+                label: 'إضافة',
+                colors: colors,
+                loading: saving,
+                onPressed: () async {
+                  final name = nameCtrl.text.trim();
+                  if (name.isEmpty) {
+                    setSheetState(() => err = 'أدخل الاسم');
+                    return;
+                  }
+                  setSheetState(() {
+                    saving = true;
+                    err = null;
+                  });
+                  final user = FirebaseAuth.instance.currentUser!;
+                  try {
+                    await FirebaseFirestore.instance.collection('ledgerPeople').add({
+                      'name': name,
+                      'uid': user.uid,
+                      'createdAt': FieldValue.serverTimestamp(),
                     });
-                    final user = FirebaseAuth.instance.currentUser!;
-                    final data = Expense(
-                      kind: kind,
-                      amount: amount,
-                      category: category,
-                      person: personCtrl.text.trim(),
-                      note: noteCtrl.text.trim(),
-                      date: date,
-                    ).toMap();
-                    final col = FirebaseFirestore.instance.collection('expenses');
-                    try {
-                      if (existing != null) {
-                        await col.doc(existing.id).update(data);
-                      } else {
-                        await col.add({...data, 'uid': user.uid, 'createdAt': FieldValue.serverTimestamp()});
-                      }
-                      if (ctx.mounted) Navigator.pop(ctx);
-                      if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text(existing == null ? 'تمت إضافة الحركة' : 'تم حفظ التعديلات')),
-                        );
-                      }
-                    } catch (e) {
-                      setSheetState(() {
-                        err = e.toString();
-                        saving = false;
-                      });
-                    }
-                  },
-                ),
-              ],
-            ),
+                    if (ctx.mounted) Navigator.pop(ctx);
+                  } catch (e) {
+                    setSheetState(() {
+                      err = e.toString();
+                      saving = false;
+                    });
+                  }
+                },
+              ),
+            ],
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _labeledChips(AppColors colors, String selected, Map<String, String> optionLabels, ValueChanged<String> onSelect) {
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: optionLabels.entries.map((e) {
-        final isSel = e.key == selected;
-        return ChoiceChip(
-          label: Text(e.value),
-          selected: isSel,
-          onSelected: (_) => onSelect(e.key),
-          backgroundColor: colors.inputBg,
-          selectedColor: colors.goldSoft,
-          labelStyle: TextStyle(color: isSel ? colors.gold : colors.textMuted, fontWeight: isSel ? FontWeight.w700 : FontWeight.normal, fontSize: 12),
-          side: BorderSide(color: isSel ? colors.gold : colors.inputBorder),
-        );
-      }).toList(),
-    );
-  }
-
-  Widget _kindButton(AppColors colors, String label, IconData icon, bool selected, VoidCallback onTap) {
-    final color = selected ? colors.gold : colors.textMuted;
-    return OutlinedButton(
-      style: OutlinedButton.styleFrom(
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        side: BorderSide(color: selected ? colors.gold : colors.inputBorder, width: selected ? 2 : 1),
-        backgroundColor: selected ? colors.goldSoft : null,
-      ),
-      onPressed: onTap,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, size: 15, color: color),
-          const SizedBox(width: 6),
-          Text(label, style: TextStyle(color: color, fontWeight: selected ? FontWeight.w700 : FontWeight.normal)),
-        ],
       ),
     );
   }
@@ -246,7 +109,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
             ],
           ),
           const SizedBox(height: 3),
-          Text('متابعة ما يُصرف ويُدّخر', style: TextStyle(color: colors.textMuted, fontSize: 12)),
+          Text('دفتر حسابات — من له ومن عليه', style: TextStyle(color: colors.textMuted, fontSize: 12)),
         ],
       ),
     );
@@ -258,7 +121,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
       left: 16,
       child: InkWell(
         borderRadius: BorderRadius.circular(28),
-        onTap: () => _openForm(),
+        onTap: _addPerson,
         child: Container(
           width: 56,
           height: 56,
@@ -268,47 +131,10 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
             gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [colors.gold, colors.gold.withOpacity(0.7)]),
             boxShadow: [BoxShadow(color: colors.gold.withOpacity(0.4), blurRadius: 16, offset: const Offset(0, 6))],
           ),
-          child: Icon(Icons.add, color: colors.bg, size: 28),
+          child: Icon(Icons.person_add_alt_1, color: colors.bg, size: 26),
         ),
       ),
     );
-  }
-
-  Widget _summaryTile(AppColors colors, String label, String value, Color color) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 6),
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.12),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: color.withOpacity(0.3)),
-        ),
-        child: Column(
-          children: [
-            Text(label, style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w600)),
-            const SizedBox(height: 4),
-            Text(value, style: TextStyle(color: color, fontSize: 16, fontWeight: FontWeight.w900)),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Future<void> _delete(Expense e) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('حذف الحركة'),
-        content: const Text('هل تريد حذف هذه الحركة المالية؟'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('إلغاء')),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('حذف', style: TextStyle(color: Colors.red))),
-        ],
-      ),
-    );
-    if (confirm == true) {
-      await FirebaseFirestore.instance.collection('expenses').doc(e.id).delete();
-    }
   }
 
   @override
@@ -318,84 +144,58 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
 
     final body = StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
       stream: FirebaseFirestore.instance
-          .collection('expenses')
+          .collection('ledgerPeople')
           .where('uid', isEqualTo: user.uid)
-          .orderBy('date', descending: true)
+          .orderBy('createdAt', descending: true)
           .snapshots(includeMetadataChanges: true),
-      builder: (context, snapshot) {
-        final loading = snapshot.connectionState == ConnectionState.waiting;
-        final isOffline = snapshot.data?.metadata.isFromCache ?? false;
-        final all = (snapshot.data?.docs ?? []).map((d) => Expense.fromDoc(d.id, d.data())).toList();
+      builder: (context, peopleSnap) {
+        final loading = peopleSnap.connectionState == ConnectionState.waiting;
+        final isOffline = peopleSnap.data?.metadata.isFromCache ?? false;
+        final people = (peopleSnap.data?.docs ?? []).map((d) => LedgerPerson.fromDoc(d.id, d.data())).toList();
 
-        final totalExpense = all.where((e) => e.kind == ExpenseKind.expense).fold<double>(0, (s, e) => s + e.amount);
-        final totalIncome = all.where((e) => e.kind == ExpenseKind.income).fold<double>(0, (s, e) => s + e.amount);
-        final net = totalIncome - totalExpense;
+        return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+          stream: FirebaseFirestore.instance.collection('ledgerEntries').where('uid', isEqualTo: user.uid).snapshots(includeMetadataChanges: true),
+          builder: (context, entriesSnap) {
+            final allEntries = (entriesSnap.data?.docs ?? []).map((d) => LedgerEntry.fromDoc(d.id, d.data())).toList();
 
-        final filtered = all.where((e) {
-          final fk = filterKind == 'all' || (filterKind == 'expense' && e.kind == ExpenseKind.expense) || (filterKind == 'income' && e.kind == ExpenseKind.income);
-          final fc = filterCategory == 'all' || e.category == filterCategory;
-          return fk && fc;
-        }).toList();
+            double balanceFor(String? personId) {
+              var net = 0.0;
+              for (final e in allEntries) {
+                if (e.personId != personId) continue;
+                net += e.type == LedgerEntryType.lana ? e.amount : -e.amount;
+              }
+              return net;
+            }
 
-        return Column(
+            return Column(
               children: [
                 OfflineBanner(isOffline: isOffline),
                 _header(colors),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
-                  child: Row(
-                    children: [
-                      _summaryTile(colors, 'مصروفات', totalExpense.toStringAsFixed(0), const Color(0xFFE74C3C)),
-                      const SizedBox(width: 10),
-                      _summaryTile(colors, 'دخل', totalIncome.toStringAsFixed(0), const Color(0xFF2ECC71)),
-                      const SizedBox(width: 10),
-                      _summaryTile(colors, 'صافي', '${net >= 0 ? '+' : ''}${net.toStringAsFixed(0)}', net >= 0 ? colors.gold : const Color(0xFFE74C3C)),
-                    ],
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _labeledChips(colors, filterKind, const {
-                        'all': 'الكل',
-                        'expense': 'مصروف',
-                        'income': 'دخل',
-                      }, (v) => setState(() => filterKind = v)),
-                      const SizedBox(height: 8),
-                      _labeledChips(
-                        colors,
-                        filterCategory,
-                        {'all': 'كل الفئات', for (final c in expenseCategories) c: c},
-                        (v) => setState(() => filterCategory = v),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 12),
                 Expanded(
                   child: loading
                       ? Center(child: CircularProgressIndicator(color: colors.gold))
-                      : filtered.isEmpty
+                      : people.isEmpty
                           ? Center(
                               child: Column(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Icon(Icons.inbox_outlined, size: 34, color: colors.textMuted.withOpacity(0.6)),
+                                  Icon(Icons.people_outline, size: 34, color: colors.textMuted.withOpacity(0.6)),
                                   const SizedBox(height: 8),
-                                  Text('لا توجد حركات مالية بعد', style: TextStyle(color: colors.textMuted)),
+                                  Text('لا يوجد أشخاص بعد — اضغط + لإضافة أول شخص', style: TextStyle(color: colors.textMuted)),
                                 ],
                               ),
                             )
                           : ListView.builder(
                               padding: const EdgeInsets.fromLTRB(16, 4, 16, 88),
-                              itemCount: filtered.length,
-                              itemBuilder: (context, i) => _expenseCard(colors, filtered[i]),
+                              itemCount: people.length,
+                              itemBuilder: (context, i) => _personCard(colors, people[i], balanceFor(people[i].id)),
                             ),
                 ),
               ],
             );
+          },
+        );
       },
     );
 
@@ -410,14 +210,11 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     );
   }
 
-  Widget _expenseCard(AppColors colors, Expense e) {
-    final isExpense = e.kind == ExpenseKind.expense;
-    final color = isExpense ? const Color(0xFFE74C3C) : const Color(0xFF2ECC71);
-    final categoryIcon = _categoryIcons[e.category] ?? Icons.category_outlined;
-    final metaParts = [
-      if (e.person.isNotEmpty) (isExpense ? 'إلى ${e.person}' : 'من ${e.person}'),
-      _fmtDateHuman(e.date),
-    ];
+  Widget _personCard(AppColors colors, LedgerPerson p, double balance) {
+    final isZero = balance.abs() < 0.005;
+    final isPositive = balance > 0;
+    final color = isZero ? colors.textMuted : (isPositive ? const Color(0xFF2ECC71) : const Color(0xFFE74C3C));
+    final label = isZero ? 'متصافي' : (isPositive ? 'لنا' : 'لهم');
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -425,53 +222,35 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
         color: colors.card,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: colors.borderSoft),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4)),
-        ],
+        boxShadow: const [BoxShadow(color: Color(0x0D000000), blurRadius: 10, offset: Offset(0, 4))],
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
           borderRadius: BorderRadius.circular(16),
-          onTap: () => _openForm(existing: e),
+          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => LedgerPersonScreen(person: p))),
           child: Padding(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(14),
             child: Row(
               children: [
                 Container(
                   width: 42,
                   height: 42,
                   alignment: Alignment.center,
-                  decoration: BoxDecoration(color: color.withOpacity(0.14), borderRadius: BorderRadius.circular(13)),
-                  child: Icon(categoryIcon, size: 19, color: color),
+                  decoration: BoxDecoration(color: colors.goldSoft, borderRadius: BorderRadius.circular(13)),
+                  child: Text(p.name.isNotEmpty ? p.name[0] : '؟', style: TextStyle(color: colors.gold, fontWeight: FontWeight.w900, fontSize: 16)),
                 ),
                 const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(e.category, style: TextStyle(color: colors.text, fontWeight: FontWeight.w700, fontSize: 13.5)),
-                      const SizedBox(height: 2),
-                      Text(metaParts.join(' · '),
-                          style: TextStyle(color: colors.textMuted, fontSize: 11), maxLines: 1, overflow: TextOverflow.ellipsis),
-                      if (e.note.isNotEmpty) ...[
-                        const SizedBox(height: 2),
-                        Text(e.note, style: TextStyle(color: colors.textSoft, fontSize: 11), maxLines: 1, overflow: TextOverflow.ellipsis),
-                      ],
-                    ],
-                  ),
+                Expanded(child: Text(p.name, style: TextStyle(color: colors.text, fontWeight: FontWeight.w700, fontSize: 14.5))),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text('${balance.abs().toStringAsFixed(0)} د.ل', style: TextStyle(color: color, fontWeight: FontWeight.w900, fontSize: 14)),
+                    Text(label, style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.w600)),
+                  ],
                 ),
-                const SizedBox(width: 8),
-                Text('${isExpense ? '-' : '+'}${e.amount.toStringAsFixed(0)}',
-                    style: TextStyle(color: color, fontWeight: FontWeight.w900, fontSize: 14)),
-                const SizedBox(width: 2),
-                IconButton(
-                  icon: Icon(Icons.delete_outline, size: 18, color: colors.textMuted),
-                  splashRadius: 18,
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                  onPressed: () => _delete(e),
-                ),
+                const SizedBox(width: 6),
+                Icon(Icons.chevron_left, size: 18, color: colors.textMuted),
               ],
             ),
           ),
