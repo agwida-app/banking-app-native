@@ -460,11 +460,11 @@ class _SubsTabState extends State<_SubsTab> {
     final isFree = sub.usedBy == null && !isExpired;
     final deviceCount = sub.devices.length;
 
-    final (chipBg, chipBorder, chipIcon, chipLabel) = isActive
-        ? (const Color(0x1A2ECC71), const Color(0x4D2ECC71), Icons.check_circle, 'مفعّل')
+    final (chipBg, chipBorder, chipText, chipIcon, chipLabel) = isActive
+        ? (const Color(0x1A2ECC71), const Color(0x4D2ECC71), const Color(0xFF2ECC71), Icons.check_circle, 'مفعّل')
         : isFree
-            ? (const Color(0x1AC9A84C), const Color(0x4DC9A84C), Icons.lock_open, 'متاح')
-            : (const Color(0x1AE74C3C), const Color(0x4DE74C3C), Icons.cancel, 'منتهي');
+            ? (const Color(0x1AC9A84C), const Color(0x4DC9A84C), const Color(0xFFC9A84C), Icons.lock_open, 'متاح')
+            : (const Color(0x1AE74C3C), const Color(0x4DE74C3C), const Color(0xFFE74C3C), Icons.cancel, 'منتهي');
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
@@ -494,9 +494,9 @@ class _SubsTabState extends State<_SubsTab> {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(chipIcon, size: 11, color: const Color(0xFFF8F6F0)),
+                    Icon(chipIcon, size: 11, color: chipText),
                     const SizedBox(width: 3),
-                    Text(chipLabel, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFFF8F6F0))),
+                    Text(chipLabel, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: chipText)),
                   ],
                 ),
               ),
@@ -831,8 +831,8 @@ class _AffiliatesTabState extends State<_AffiliatesTab> {
               OutlinedButton.icon(
                 style: OutlinedButton.styleFrom(backgroundColor: colors.goldSoft, side: BorderSide(color: colors.borderSoft), padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4)),
                 onPressed: () => _copy(aff.code, 'كود الإحالة'),
-                icon: const Icon(Icons.content_copy, size: 12, color: Color(0xFFF8F6F0)),
-                label: Text(aff.code, style: const TextStyle(fontSize: 11, color: Color(0xFFF8F6F0))),
+                icon: Icon(Icons.content_copy, size: 12, color: colors.gold),
+                label: Text(aff.code, style: TextStyle(fontSize: 11, color: colors.gold)),
               ),
             ],
           ),

@@ -50,22 +50,35 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
       context: context,
       backgroundColor: colors.bg,
       isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(22))),
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setSheetState) => Padding(
-          padding: EdgeInsets.only(left: 16, right: 16, top: 16, bottom: MediaQuery.of(ctx).viewInsets.bottom + 16),
+          padding: EdgeInsets.only(left: 16, right: 16, top: 10, bottom: MediaQuery.of(ctx).viewInsets.bottom + 16),
           child: SingleChildScrollView(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    margin: const EdgeInsets.only(bottom: 16),
+                    decoration: BoxDecoration(color: colors.borderSoft, borderRadius: BorderRadius.circular(2)),
+                  ),
+                ),
                 Row(
                   children: [
-                    Icon(existing == null ? Icons.add_circle_outline : Icons.edit_outlined, size: 18, color: colors.gold),
-                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(color: colors.goldSoft, borderRadius: BorderRadius.circular(10)),
+                      child: Icon(existing == null ? Icons.add_circle_outline : Icons.edit_outlined, size: 18, color: colors.gold),
+                    ),
+                    const SizedBox(width: 10),
                     Text(existing == null ? 'حركة مالية جديدة' : 'تعديل الحركة',
-                        style: TextStyle(color: colors.gold, fontSize: 16, fontWeight: FontWeight.w900)),
+                        style: TextStyle(color: colors.text, fontSize: 16, fontWeight: FontWeight.w900)),
                   ],
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
                 if (err != null) MessageBanner(text: err!),
                 Text('نوع الحركة', style: TextStyle(fontSize: 12, color: colors.textSoft)),
                 const SizedBox(height: 6),
@@ -107,8 +120,12 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                 ),
                 Text('التاريخ', style: TextStyle(fontSize: 12, color: colors.textSoft)),
                 const SizedBox(height: 6),
-                OutlinedButton(
-                  style: OutlinedButton.styleFrom(padding: const EdgeInsets.all(12), side: BorderSide(color: colors.inputBorder)),
+                OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.all(12),
+                    side: BorderSide(color: colors.inputBorder),
+                    alignment: Alignment.centerRight,
+                  ),
                   onPressed: () async {
                     final picked = await showDatePicker(
                       context: ctx,
@@ -118,7 +135,8 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                     );
                     if (picked != null) setSheetState(() => date = picked);
                   },
-                  child: Text(_fmtDate(date), style: TextStyle(color: colors.text)),
+                  icon: Icon(Icons.calendar_today_outlined, size: 15, color: colors.gold),
+                  label: Text(_fmtDate(date), style: TextStyle(color: colors.text)),
                 ),
                 const SizedBox(height: 14),
                 ThemedField(label: 'ملاحظة', controller: noteCtrl, colors: colors, maxLines: 2, hint: 'مثال: إيجار شهر يوليو'),
@@ -154,6 +172,11 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                         await col.add({...data, 'uid': user.uid, 'createdAt': FieldValue.serverTimestamp()});
                       }
                       if (ctx.mounted) Navigator.pop(ctx);
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(existing == null ? 'تمت إضافة الحركة' : 'تم حفظ التعديلات')),
+                        );
+                      }
                     } catch (e) {
                       setSheetState(() {
                         err = e.toString();

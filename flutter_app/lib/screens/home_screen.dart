@@ -7,13 +7,11 @@ import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../models/client.dart';
 import '../theme/app_theme.dart';
 import '../widgets/common.dart';
 import 'admin_screen.dart';
-import 'auth_screen.dart' show whatsappUrl;
 import 'client_detail_screen.dart';
 import 'client_form_screen.dart';
 import 'expenses_screen.dart';
@@ -285,16 +283,6 @@ class _ClientsAndStatsTabState extends State<_ClientsAndStatsTab> {
           const SizedBox(height: 16),
           _bankDistributionCard(colors, bankCounts),
         ],
-        const SizedBox(height: 16),
-        OutlinedButton(
-          style: OutlinedButton.styleFrom(
-            backgroundColor: const Color(0x1A25D366),
-            side: const BorderSide(color: Color(0x4D25D366)),
-            padding: const EdgeInsets.all(14),
-          ),
-          onPressed: () => launchUrl(Uri.parse(whatsappUrl), mode: LaunchMode.externalApplication),
-          child: const Text('تواصل مع خدمة العملاء', style: TextStyle(color: Color(0xFF25D366), fontWeight: FontWeight.w700)),
-        ),
       ],
     );
   }
@@ -606,10 +594,10 @@ class _ClientsAndStatsTabState extends State<_ClientsAndStatsTab> {
 
   Widget _statusBadge(Client c) {
     final (bg, border, text, icon, label) = c.isSold
-        ? (const Color(0x1AE74C3C), const Color(0x4DE74C3C), const Color(0xFFF8F6F0), Icons.sell, 'مباع')
+        ? (const Color(0x1AE74C3C), const Color(0x4DE74C3C), const Color(0xFFE74C3C), Icons.sell, 'مباع')
         : c.cardBooked
-            ? (const Color(0x1A2ECC71), const Color(0x4D2ECC71), const Color(0xFFF8F6F0), Icons.check_circle, 'تم')
-            : (const Color(0x1AF39C12), const Color(0x4DF39C12), const Color(0xFFF8F6F0), Icons.hourglass_bottom, 'انتظار');
+            ? (const Color(0x1A2ECC71), const Color(0x4D2ECC71), const Color(0xFF2ECC71), Icons.check_circle, 'تم')
+            : (const Color(0x1AF39C12), const Color(0x4DF39C12), const Color(0xFFF39C12), Icons.hourglass_bottom, 'انتظار');
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(color: bg, border: Border.all(color: border), borderRadius: BorderRadius.circular(20)),
