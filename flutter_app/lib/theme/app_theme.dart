@@ -39,25 +39,27 @@ class AppColors {
   });
 }
 
+// The app's primary palette: white with a calm muted-navy accent (named
+// "darkColors" only for historical/minimal-diff reasons — it is the
+// default theme, not a dark background).
 const darkColors = AppColors(
   mode: 'dark',
-  bg: Color(0xFF0A1628),
-  card: Color(0xFF0F2040),
-  border: Color(0x33C9A84C),
-  borderSoft: Color(0x26C9A84C),
-  gold: Color(0xFFC9A84C),
-  goldSoft: Color(0x1AC9A84C),
-  text: Color(0xFFF8F6F0),
-  textSoft: Color(0xFFC5CEDD),
-  textMuted: Color(0xFF8A9AB5),
-  inputBg: Color(0x0FFFFFFF),
-  inputBorder: Color(0x1AFFFFFF),
-  overlay: Color(0x40000000),
-  // A gently-elevated navy (lighter than the card, not stark white) so
-  // fields read as distinct boxes without breaking the dark/gold look.
-  fieldBg: Color(0xFF17294C),
-  fieldText: Color(0xFFF8F6F0),
-  fieldBorder: Color(0x1FFFFFFF),
+  bg: Color(0xFFFFFFFF),
+  card: Color(0xFFF5F7FA),
+  border: Color(0x333B5B82),
+  borderSoft: Color(0x263B5B82),
+  gold: Color(0xFF3B5B82),
+  goldSoft: Color(0x1A3B5B82),
+  text: Color(0xFF1C2B3A),
+  textSoft: Color(0xFF46566B),
+  textMuted: Color(0xFF6B7A94),
+  inputBg: Color(0x0A1C2B3A),
+  inputBorder: Color(0x1F1C2B3A),
+  overlay: Color(0x14000000),
+  // Fields sit a shade brighter than the card, like an inset paper cut-out.
+  fieldBg: Color(0xFFFFFFFF),
+  fieldText: Color(0xFF1C2B3A),
+  fieldBorder: Color(0x141C2B3A),
 );
 
 const lightColors = AppColors(

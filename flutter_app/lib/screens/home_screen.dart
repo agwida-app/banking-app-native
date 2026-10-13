@@ -51,7 +51,7 @@ class _HomeScreenState extends State<HomeScreen> {
         actions: [
           IconButton(
             onPressed: theme.toggle,
-            icon: Icon(theme.isDark ? Icons.light_mode : Icons.dark_mode, color: colors.gold),
+            icon: Icon(Icons.palette_outlined, color: colors.gold),
           ),
           if (widget.isAdmin)
             IconButton(

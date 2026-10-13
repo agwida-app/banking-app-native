@@ -165,7 +165,7 @@ class _AuthScreenState extends State<AuthScreen> {
               child: IconButton(
                 onPressed: theme.toggle,
                 style: IconButton.styleFrom(backgroundColor: colors.card, side: BorderSide(color: colors.border)),
-                icon: Icon(theme.isDark ? Icons.light_mode : Icons.dark_mode, color: colors.gold),
+                icon: Icon(Icons.palette_outlined, color: colors.gold),
               ),
             ),
           ],

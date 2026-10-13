@@ -25,6 +25,8 @@ class BankingApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = context.watch<ThemeController>().isDark;
+    // Both palettes are light (white-backed) now, so Material always runs
+    // in light brightness regardless of which accent palette is active.
     return MaterialApp(
       navigatorKey: navigatorKey,
       title: 'إدارة بطاقاتك',
@@ -32,11 +34,11 @@ class BankingApp extends StatelessWidget {
       locale: const Locale('ar'),
       theme: ThemeData(
         useMaterial3: true,
-        brightness: isDark ? Brightness.dark : Brightness.light,
+        brightness: Brightness.light,
         scaffoldBackgroundColor: isDark ? darkColors.bg : lightColors.bg,
         colorScheme: ColorScheme.fromSeed(
           seedColor: isDark ? darkColors.gold : lightColors.gold,
-          brightness: isDark ? Brightness.dark : Brightness.light,
+          brightness: Brightness.light,
         ),
       ),
       builder: (context, child) {
