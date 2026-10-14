@@ -28,7 +28,6 @@ class _LedgerPersonScreenState extends State<LedgerPersonScreen> {
     final reasonCtrl = TextEditingController(text: existing?.reason);
     var type = existing?.type ?? LedgerEntryType.lana;
     var date = existing?.date ?? DateTime.now();
-    var saving = false;
     String? err;
 
     showModalBottomSheet(
@@ -108,8 +107,7 @@ class _LedgerPersonScreenState extends State<LedgerPersonScreen> {
                 PrimaryButton(
                   label: 'حفظ',
                   colors: colors,
-                  loading: saving,
-                  onPressed: () async {
+                  onPressed: () {
                     final amount = double.tryParse(amountCtrl.text.trim());
                     if (amount == null || amount <= 0) {
                       setSheetState(() => err = 'أدخل مبلغاً صحيحاً');
@@ -119,10 +117,6 @@ class _LedgerPersonScreenState extends State<LedgerPersonScreen> {
                       setSheetState(() => err = 'أدخل سبب المعاملة');
                       return;
                     }
-                    setSheetState(() {
-                      saving = true;
-                      err = null;
-                    });
                     final user = FirebaseAuth.instance.currentUser!;
                     final data = LedgerEntry(
                       personId: widget.person.id!,
@@ -132,24 +126,19 @@ class _LedgerPersonScreenState extends State<LedgerPersonScreen> {
                       date: date,
                     ).toMap();
                     final col = FirebaseFirestore.instance.collection('ledgerEntries');
-                    try {
-                      if (existing != null) {
-                        await col.doc(existing.id).update(data);
-                      } else {
-                        await col.add({...data, 'uid': user.uid, 'createdAt': FieldValue.serverTimestamp()});
-                      }
-                      if (ctx.mounted) Navigator.pop(ctx);
-                      if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text(existing == null ? 'تمت إضافة المعاملة' : 'تم حفظ التعديلات')),
-                        );
-                      }
-                    } catch (e) {
-                      setSheetState(() {
-                        err = e.toString();
-                        saving = false;
-                      });
-                    }
+                    // Fire-and-forget: see the comment on the same pattern in
+                    // expenses_screen.dart — awaiting here would hang the UI
+                    // indefinitely while offline.
+                    final future = existing != null
+                        ? col.doc(existing.id).update(data)
+                        : col.add({...data, 'uid': user.uid, 'createdAt': FieldValue.serverTimestamp()});
+                    future.catchError((e) {
+                      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تعذر الحفظ: $e')));
+                    });
+                    Navigator.pop(ctx);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(existing == null ? 'تمت إضافة المعاملة' : 'تم حفظ التعديلات')),
+                    );
                   },
                 ),
               ],
@@ -185,7 +174,9 @@ class _LedgerPersonScreenState extends State<LedgerPersonScreen> {
       ),
     );
     if (confirm == true) {
-      await FirebaseFirestore.instance.collection('ledgerEntries').doc(e.id).delete();
+      FirebaseFirestore.instance.collection('ledgerEntries').doc(e.id).delete().catchError((err) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تعذر الحذف: $err')));
+      });
     }
   }
 
@@ -203,13 +194,17 @@ class _LedgerPersonScreenState extends State<LedgerPersonScreen> {
     );
     if (confirm != true) return;
     final db = FirebaseFirestore.instance;
+    // get() also needs connectivity for a fresh list, but falls back to the
+    // local cache when offline, so this still works without a network round trip.
     final entries = await db.collection('ledgerEntries').where('personId', isEqualTo: widget.person.id).get();
     final batch = db.batch();
     for (final d in entries.docs) {
       batch.delete(d.reference);
     }
     batch.delete(db.collection('ledgerPeople').doc(widget.person.id));
-    await batch.commit();
+    batch.commit().catchError((err) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تعذر الحذف: $err')));
+    });
     if (mounted) Navigator.pop(context);
   }
 

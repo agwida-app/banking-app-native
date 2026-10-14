@@ -23,7 +23,6 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   void _addPerson() {
     final colors = context.read<ThemeController>().colors;
     final nameCtrl = TextEditingController();
-    var saving = false;
     String? err;
 
     showModalBottomSheet(
@@ -64,31 +63,25 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
               PrimaryButton(
                 label: 'إضافة',
                 colors: colors,
-                loading: saving,
-                onPressed: () async {
+                onPressed: () {
                   final name = nameCtrl.text.trim();
                   if (name.isEmpty) {
                     setSheetState(() => err = 'أدخل الاسم');
                     return;
                   }
-                  setSheetState(() {
-                    saving = true;
-                    err = null;
-                  });
                   final user = FirebaseAuth.instance.currentUser!;
-                  try {
-                    await FirebaseFirestore.instance.collection('ledgerPeople').add({
-                      'name': name,
-                      'uid': user.uid,
-                      'createdAt': FieldValue.serverTimestamp(),
-                    });
-                    if (ctx.mounted) Navigator.pop(ctx);
-                  } catch (e) {
-                    setSheetState(() {
-                      err = e.toString();
-                      saving = false;
-                    });
-                  }
+                  // Fire-and-forget: Firestore applies this to the local cache
+                  // immediately and syncs once online, but the returned Future
+                  // doesn't resolve until the server acks it — awaiting it
+                  // would hang the UI indefinitely while offline.
+                  FirebaseFirestore.instance.collection('ledgerPeople').add({
+                    'name': name,
+                    'uid': user.uid,
+                    'createdAt': FieldValue.serverTimestamp(),
+                  }).catchError((e) {
+                    if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تعذر الحفظ: $e')));
+                  });
+                  Navigator.pop(ctx);
                 },
               ),
             ],

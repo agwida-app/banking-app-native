@@ -40,7 +40,14 @@ class ClientDetailScreen extends StatelessWidget {
       ),
     );
     if (confirm == true) {
-      await FirebaseFirestore.instance.collection('clients').doc(client.id).delete();
+      // Fire-and-forget: see the comment on the same pattern in
+      // client_form_screen.dart — awaiting here would hang the UI
+      // indefinitely while offline.
+      FirebaseFirestore.instance.collection('clients').doc(client.id).delete().catchError((e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تعذر الحذف: $e')));
+        }
+      });
       if (context.mounted) Navigator.pop(context);
     }
   }

@@ -38,7 +38,6 @@ class _ClientFormScreenState extends State<ClientFormScreen> {
   late String paymentType = widget.existing?.paymentType ?? '';
   late bool cardBooked = widget.existing?.cardBooked ?? false;
   late bool isSold = widget.existing?.isSold ?? false;
-  bool saving = false;
 
   bool get isEdit => widget.existing != null;
 
@@ -69,13 +68,12 @@ class _ClientFormScreenState extends State<ClientFormScreen> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
-  Future<void> _save() async {
+  void _save() {
     if (nameCtrl.text.trim().isEmpty) return _err('الاسم مطلوب');
     if (bankType.isEmpty) return _err('المصرف مطلوب');
     if (phone1Ctrl.text.trim().isEmpty) return _err('الهاتف مطلوب');
     if (nationalIdCtrl.text.trim().isEmpty) return _err('الرقم الوطني مطلوب');
 
-    setState(() => saving = true);
     final user = FirebaseAuth.instance.currentUser!;
     final data = Client(
       name: nameCtrl.text.trim(),
@@ -99,27 +97,27 @@ class _ClientFormScreenState extends State<ClientFormScreen> {
       notes: notesCtrl.text.trim(),
     ).toMap();
 
-    try {
-      final col = FirebaseFirestore.instance.collection('clients');
-      if (isEdit) {
-        await col.doc(widget.existing!.id).update({
-          ...data,
-          'updatedBy': user.identity,
-          'updatedAt': FieldValue.serverTimestamp(),
-        });
-      } else {
-        await col.add({
-          ...data,
-          'uid': user.uid,
-          'createdBy': user.identity,
-          'createdAt': FieldValue.serverTimestamp(),
-        });
-      }
-      if (mounted) Navigator.pop(context);
-    } catch (e) {
-      _err(e.toString());
-    }
-    if (mounted) setState(() => saving = false);
+    final col = FirebaseFirestore.instance.collection('clients');
+    // Fire-and-forget: Firestore applies this to the local cache immediately
+    // and syncs once online, but the returned Future doesn't resolve until
+    // the server acks it — awaiting it would hang the UI indefinitely while
+    // offline (and the data is already safe in the local cache either way).
+    final future = isEdit
+        ? col.doc(widget.existing!.id).update({
+            ...data,
+            'updatedBy': user.identity,
+            'updatedAt': FieldValue.serverTimestamp(),
+          })
+        : col.add({
+            ...data,
+            'uid': user.uid,
+            'createdBy': user.identity,
+            'createdAt': FieldValue.serverTimestamp(),
+          });
+    future.catchError((e) {
+      if (mounted) _err(e.toString());
+    });
+    Navigator.pop(context);
   }
 
   @override
@@ -224,7 +222,7 @@ class _ClientFormScreenState extends State<ClientFormScreen> {
           if (isSold) ThemedField(label: 'بيعت إلى', controller: soldToCtrl, colors: colors),
           ThemedField(label: 'ملاحظات', controller: notesCtrl, colors: colors, maxLines: 3),
           const SizedBox(height: 20),
-          PrimaryButton(label: 'حفظ', onPressed: _save, loading: saving, colors: colors),
+          PrimaryButton(label: 'حفظ', onPressed: _save, colors: colors),
         ],
       ),
     );
