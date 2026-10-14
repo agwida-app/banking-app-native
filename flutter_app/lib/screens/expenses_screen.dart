@@ -156,15 +156,20 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     final user = FirebaseAuth.instance.currentUser!;
 
     final body = StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      // Not ordered server-side: createdAt is a serverTimestamp(), which is
+      // still null in the local cache for a person added while offline —
+      // Firestore's query engine excludes docs with a null sort-field value
+      // from an orderBy, so the new person would vanish from the list until
+      // the server resolves the real timestamp. Sorted client-side instead.
       stream: FirebaseFirestore.instance
           .collection('ledgerPeople')
           .where('uid', isEqualTo: user.uid)
-          .orderBy('createdAt', descending: true)
           .snapshots(includeMetadataChanges: true),
       builder: (context, peopleSnap) {
         final loading = peopleSnap.connectionState == ConnectionState.waiting;
         final isOffline = peopleSnap.data?.metadata.isFromCache ?? false;
-        final people = (peopleSnap.data?.docs ?? []).map((d) => LedgerPerson.fromDoc(d.id, d.data())).toList();
+        final people = (peopleSnap.data?.docs ?? []).map((d) => LedgerPerson.fromDoc(d.id, d.data())).toList()
+          ..sort((a, b) => (b.createdAt?.toDate() ?? DateTime.now()).compareTo(a.createdAt?.toDate() ?? DateTime.now()));
 
         return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
           stream: FirebaseFirestore.instance.collection('ledgerEntries').where('uid', isEqualTo: user.uid).snapshots(includeMetadataChanges: true),

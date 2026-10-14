@@ -154,15 +154,20 @@ class _ClientsAndStatsTabState extends State<_ClientsAndStatsTab> {
     final user = FirebaseAuth.instance.currentUser!;
 
     return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      // Not ordered server-side: createdAt is a serverTimestamp(), which is
+      // still null in the local cache for a client added while offline —
+      // Firestore's query engine excludes docs with a null sort-field value
+      // from an orderBy, so the new client would vanish from the list until
+      // the server resolves the real timestamp. Sorted client-side instead.
       stream: FirebaseFirestore.instance
           .collection('clients')
           .where('uid', isEqualTo: user.uid)
-          .orderBy('createdAt', descending: true)
           .snapshots(includeMetadataChanges: true),
       builder: (context, snapshot) {
         final loading = snapshot.connectionState == ConnectionState.waiting;
         final isOffline = snapshot.data?.metadata.isFromCache ?? false;
-        final clients = (snapshot.data?.docs ?? []).map((d) => Client.fromDoc(d.id, d.data())).toList();
+        final clients = (snapshot.data?.docs ?? []).map((d) => Client.fromDoc(d.id, d.data())).toList()
+          ..sort((a, b) => (b.createdAt?.toDate() ?? DateTime.now()).compareTo(a.createdAt?.toDate() ?? DateTime.now()));
         final filtered = _applyFilters(clients);
 
         final total = clients.length;
