@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
@@ -44,23 +45,24 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       backgroundColor: colors.bg,
       appBar: AppBar(
-        backgroundColor: colors.card,
+        backgroundColor: colors.gold,
         elevation: 0,
+        systemOverlayStyle: SystemUiOverlayStyle.light,
         automaticallyImplyLeading: false,
-        title: Text('إدارة بطاقاتك', style: TextStyle(color: colors.gold, fontSize: 15, fontWeight: FontWeight.w900)),
+        title: const Text('إدارة بطاقاتك', style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w900)),
         actions: [
           IconButton(
             onPressed: theme.toggle,
-            icon: Icon(Icons.palette_outlined, color: colors.gold),
+            icon: const Icon(Icons.palette_outlined, color: Colors.white),
           ),
           if (widget.isAdmin)
             IconButton(
-              icon: Icon(Icons.admin_panel_settings, size: 20, color: colors.gold),
+              icon: const Icon(Icons.admin_panel_settings, size: 20, color: Colors.white),
               onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminScreen())),
             ),
           TextButton(
             onPressed: () => FirebaseAuth.instance.signOut(),
-            child: Text('خروج', style: TextStyle(color: colors.textMuted)),
+            child: const Text('خروج', style: TextStyle(color: Colors.white70)),
           ),
         ],
       ),
