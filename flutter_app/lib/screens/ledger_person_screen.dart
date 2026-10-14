@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -253,8 +254,9 @@ class _LedgerPersonScreenState extends State<LedgerPersonScreen> {
     return Scaffold(
       backgroundColor: colors.bg,
       appBar: AppBar(
-        backgroundColor: colors.card,
-        foregroundColor: colors.gold,
+        backgroundColor: colors.gold,
+        foregroundColor: Colors.white,
+        systemOverlayStyle: SystemUiOverlayStyle.light,
         title: Text(widget.person.name),
         actions: [
           IconButton(icon: const Icon(Icons.share_outlined), onPressed: _shareStatement),

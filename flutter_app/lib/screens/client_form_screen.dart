@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../models/client.dart';
@@ -127,8 +128,9 @@ class _ClientFormScreenState extends State<ClientFormScreen> {
     return Scaffold(
       backgroundColor: colors.bg,
       appBar: AppBar(
-        backgroundColor: colors.card,
-        foregroundColor: colors.gold,
+        backgroundColor: colors.gold,
+        foregroundColor: Colors.white,
+        systemOverlayStyle: SystemUiOverlayStyle.light,
         title: Text(isEdit ? 'تعديل عميل' : 'إضافة عميل'),
       ),
       body: ListView(

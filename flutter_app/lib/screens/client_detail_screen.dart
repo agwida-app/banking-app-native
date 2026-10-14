@@ -87,8 +87,9 @@ class ClientDetailScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: colors.bg,
       appBar: AppBar(
-        backgroundColor: colors.card,
-        foregroundColor: colors.gold,
+        backgroundColor: colors.gold,
+        foregroundColor: Colors.white,
+        systemOverlayStyle: SystemUiOverlayStyle.light,
         title: Text(client.name),
         actions: [
           IconButton(

@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../models/ledger.dart';
@@ -234,7 +235,12 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
 
     return Scaffold(
       backgroundColor: colors.bg,
-      appBar: AppBar(backgroundColor: colors.card, foregroundColor: colors.gold, title: const Text('المصروفات')),
+      appBar: AppBar(
+        backgroundColor: colors.gold,
+        foregroundColor: Colors.white,
+        systemOverlayStyle: SystemUiOverlayStyle.light,
+        title: const Text('المصروفات'),
+      ),
       body: Stack(children: [body, _addFab(colors)]),
     );
   }

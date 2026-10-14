@@ -45,8 +45,9 @@ class _AdminScreenState extends State<AdminScreen> {
     return Scaffold(
       backgroundColor: colors.bg,
       appBar: AppBar(
-        backgroundColor: colors.card,
-        foregroundColor: colors.gold,
+        backgroundColor: colors.gold,
+        foregroundColor: Colors.white,
+        systemOverlayStyle: SystemUiOverlayStyle.light,
         title: const Text('لوحة المدير'),
         actions: [
           IconButton(
