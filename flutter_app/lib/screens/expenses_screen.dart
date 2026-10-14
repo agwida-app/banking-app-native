@@ -117,26 +117,6 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     );
   }
 
-  Widget _summaryTile(AppColors colors, String label, String value, Color color) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 6),
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.12),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: color.withOpacity(0.3)),
-        ),
-        child: Column(
-          children: [
-            Text(label, style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w600)),
-            const SizedBox(height: 4),
-            Text(value, style: TextStyle(color: color, fontSize: 16, fontWeight: FontWeight.w900)),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _searchField(AppColors colors) {
     return TextField(
       textAlign: TextAlign.right,
@@ -206,10 +186,6 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
               return net;
             }
 
-            final totalLana = allEntries.where((e) => e.type == LedgerEntryType.lana).fold<double>(0, (s, e) => s + e.amount);
-            final totalLahom = allEntries.where((e) => e.type == LedgerEntryType.lahom).fold<double>(0, (s, e) => s + e.amount);
-            final net = totalLana - totalLahom;
-
             final q = search.trim().toLowerCase();
             final filteredPeople = q.isEmpty ? people : people.where((p) => p.name.toLowerCase().contains(q)).toList();
 
@@ -217,24 +193,11 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
               children: [
                 OfflineBanner(isOffline: isOffline),
                 _header(colors),
-                if (people.isNotEmpty) ...[
+                if (people.isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
-                    child: Row(
-                      children: [
-                        _summaryTile(colors, 'لنا', totalLana.toStringAsFixed(0), const Color(0xFF2ECC71)),
-                        const SizedBox(width: 10),
-                        _summaryTile(colors, 'لهم', totalLahom.toStringAsFixed(0), const Color(0xFFE74C3C)),
-                        const SizedBox(width: 10),
-                        _summaryTile(colors, 'الصافي', '${net >= 0 ? '+' : ''}${net.toStringAsFixed(0)}', net >= 0 ? colors.gold : const Color(0xFFE74C3C)),
-                      ],
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
                     child: _searchField(colors),
                   ),
-                ],
                 const SizedBox(height: 12),
                 Expanded(
                   child: loading
