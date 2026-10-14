@@ -56,10 +56,11 @@ const darkColors = AppColors(
   inputBg: Color(0x0A1C2B3A),
   inputBorder: Color(0x1F1C2B3A),
   overlay: Color(0x14000000),
-  // Fields sit a shade brighter than the card, like an inset paper cut-out.
-  fieldBg: Color(0xFFFFFFFF),
+  // Distinct from both bg (white) and card (near-white) so fields read as
+  // clear boxes wherever they're placed, backed by a visible border.
+  fieldBg: Color(0xFFF1F4F8),
   fieldText: Color(0xFF1C2B3A),
-  fieldBorder: Color(0x141C2B3A),
+  fieldBorder: Color(0x331C2B3A),
 );
 
 const lightColors = AppColors(
@@ -76,11 +77,11 @@ const lightColors = AppColors(
   inputBg: Color(0x0A0A1628),
   inputBorder: Color(0x1F0A1628),
   overlay: Color(0x14000000),
-  // A touch darker than the white card so fields still read as distinct
-  // boxes instead of disappearing into it.
-  fieldBg: Color(0xFFF5F3ED),
+  // Distinct from both bg (cream) and card (white) so fields read as
+  // clear boxes wherever they're placed, backed by a visible border.
+  fieldBg: Color(0xFFFAF8F3),
   fieldText: Color(0xFF0A1628),
-  fieldBorder: Color(0x1F0A1628),
+  fieldBorder: Color(0x330A1628),
 );
 
 const _themeKey = 'app_theme_mode';

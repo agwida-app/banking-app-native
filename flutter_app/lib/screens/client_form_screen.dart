@@ -142,21 +142,29 @@ class _ClientFormScreenState extends State<ClientFormScreen> {
               children: [
                 Text('المصرف *', style: TextStyle(fontSize: 12, color: colors.textSoft)),
                 const SizedBox(height: 5),
-                DropdownButtonFormField<String>(
-                  value: bankType.isEmpty ? null : bankType,
-                  isExpanded: true,
-                  dropdownColor: colors.card,
-                  decoration: InputDecoration(
-                    filled: true,
-                    fillColor: colors.inputBg,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: colors.inputBorder)),
+                Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [BoxShadow(color: colors.text.withOpacity(0.04), blurRadius: 6, offset: const Offset(0, 2))],
                   ),
-                  hint: Text('اختر المصرف', style: TextStyle(color: colors.textMuted)),
-                  items: bankOptions
-                      .map((b) => DropdownMenuItem(value: b, child: Text(b, style: TextStyle(color: colors.text))))
-                      .toList(),
-                  onChanged: (v) => setState(() => bankType = v ?? ''),
+                  child: DropdownButtonFormField<String>(
+                    value: bankType.isEmpty ? null : bankType,
+                    isExpanded: true,
+                    dropdownColor: colors.fieldBg,
+                    decoration: InputDecoration(
+                      filled: true,
+                      fillColor: colors.fieldBg,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: colors.fieldBorder)),
+                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: colors.fieldBorder)),
+                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: colors.gold, width: 1.5)),
+                    ),
+                    hint: Text('اختر المصرف', style: TextStyle(color: colors.textMuted)),
+                    items: bankOptions
+                        .map((b) => DropdownMenuItem(value: b, child: Text(b, style: TextStyle(color: colors.fieldText))))
+                        .toList(),
+                    onChanged: (v) => setState(() => bankType = v ?? ''),
+                  ),
                 ),
                 if (bankType == 'أخرى') ...[
                   const SizedBox(height: 8),

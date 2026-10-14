@@ -71,33 +71,39 @@ class ThemedField extends StatelessWidget {
         children: [
           Text(label, style: TextStyle(fontSize: 12, color: colors.textSoft, fontWeight: FontWeight.w500)),
           const SizedBox(height: 5),
-          TextField(
-            controller: controller,
-            obscureText: obscure,
-            keyboardType: keyboardType,
-            maxLines: obscure ? 1 : maxLines,
-            onChanged: onChanged,
-            textCapitalization: capitalization,
-            textAlign: TextAlign.right,
-            style: TextStyle(color: colors.fieldText, fontSize: 15),
-            inputFormatters: inputFormatters,
-            decoration: InputDecoration(
-              hintText: hint,
-              hintStyle: TextStyle(color: colors.textMuted),
-              filled: true,
-              fillColor: colors.fieldBg,
-              contentPadding: const EdgeInsets.all(12),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: BorderSide(color: colors.fieldBorder),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: BorderSide(color: colors.fieldBorder),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: BorderSide(color: colors.gold, width: 1.5),
+          Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [BoxShadow(color: colors.text.withOpacity(0.04), blurRadius: 6, offset: const Offset(0, 2))],
+            ),
+            child: TextField(
+              controller: controller,
+              obscureText: obscure,
+              keyboardType: keyboardType,
+              maxLines: obscure ? 1 : maxLines,
+              onChanged: onChanged,
+              textCapitalization: capitalization,
+              textAlign: TextAlign.right,
+              style: TextStyle(color: colors.fieldText, fontSize: 15),
+              inputFormatters: inputFormatters,
+              decoration: InputDecoration(
+                hintText: hint,
+                hintStyle: TextStyle(color: colors.textMuted),
+                filled: true,
+                fillColor: colors.fieldBg,
+                contentPadding: const EdgeInsets.all(12),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: colors.fieldBorder),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: colors.fieldBorder),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: colors.gold, width: 1.5),
+                ),
               ),
             ),
           ),
