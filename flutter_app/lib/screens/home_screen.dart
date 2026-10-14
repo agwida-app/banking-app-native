@@ -1,16 +1,14 @@
-import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
-import 'package:share_plus/share_plus.dart';
 
 import '../models/client.dart';
 import '../theme/app_theme.dart';
+import '../utils/export_utils.dart';
 import '../widgets/common.dart';
 import 'admin_screen.dart';
 import 'client_detail_screen.dart';
@@ -143,36 +141,11 @@ class _ClientsAndStatsTabState extends State<_ClientsAndStatsTab> {
 
   DateTime _parseDate(String s) => DateTime.tryParse(s) ?? DateTime(0);
 
-  Future<void> _exportCsv(List<Client> clients) async {
-    final cols = <String, String Function(Client)>{
-      'الاسم': (c) => c.name,
-      'المصرف': (c) => c.bankLabel,
-      'الهاتف 1': (c) => c.phone1,
-      'الهاتف 2': (c) => c.phone2,
-      'الرقم الوطني': (c) => c.nationalId,
-      'جواز السفر': (c) => c.passportId,
-      'رقم الحساب': (c) => c.accountNumber,
-      'IBAN': (c) => c.iban,
-      'المبلغ': (c) => c.amount,
-      'العملة': (c) => c.currency,
-      'نوع الحجز': (c) => c.paymentType,
-      'حالة البطاقة': (c) => c.cardBooked ? 'تم الحجز' : 'لم يتم',
-      'تاريخ الحجز': (c) => c.bookingDate,
-      'الرقم السري': (c) => c.pinCode,
-      'تم البيع': (c) => c.isSold ? 'نعم' : 'لا',
-      'بيعت إلى': (c) => c.soldTo,
-      'اشترى من طرف': (c) => c.purchasedBy,
-      'ملاحظات': (c) => c.notes,
-    };
-    String esc(String v) => '"${v.replaceAll('"', '""')}"';
-    final header = cols.keys.map(esc).join(',');
-    final rows = clients.map((c) => cols.values.map((fn) => esc(fn(c))).join(',')).join('\r\n');
-    final csv = '﻿$header\r\n$rows';
-
-    final dir = await getTemporaryDirectory();
-    final file = File('${dir.path}/clients_export.csv');
-    await file.writeAsString(csv, encoding: const SystemEncoding());
-    await SharePlus.instance.share(ShareParams(files: [XFile(file.path)], subject: 'قائمة العملاء'));
+  Future<void> _export(List<Client> clients) async {
+    final colors = context.read<ThemeController>().colors;
+    final choice = await showExportPicker(context, colors);
+    if (choice == 'csv') await exportClientsCsv(clients);
+    if (choice == 'pdf') await exportClientsPdf(clients);
   }
 
   @override
@@ -451,9 +424,9 @@ class _ClientsAndStatsTabState extends State<_ClientsAndStatsTab> {
                 children: [
                   Expanded(
                     child: OutlinedButton.icon(
-                      onPressed: clients.isEmpty ? null : () => _exportCsv(filtered),
-                      icon: Icon(Icons.file_download_outlined, size: 16, color: colors.gold),
-                      label: Text('تصدير CSV', style: TextStyle(color: colors.gold, fontSize: 13)),
+                      onPressed: clients.isEmpty ? null : () => _export(filtered),
+                      icon: Icon(Icons.ios_share_outlined, size: 16, color: colors.gold),
+                      label: Text('تصدير ومشاركة', style: TextStyle(color: colors.gold, fontSize: 13)),
                     ),
                   ),
                 ],

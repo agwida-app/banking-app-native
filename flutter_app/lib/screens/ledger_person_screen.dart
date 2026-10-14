@@ -3,10 +3,10 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:share_plus/share_plus.dart';
 
 import '../models/ledger.dart';
 import '../theme/app_theme.dart';
+import '../utils/export_utils.dart';
 import '../widgets/common.dart';
 
 const _arMonths = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
@@ -229,21 +229,12 @@ class _LedgerPersonScreenState extends State<LedgerPersonScreen> {
     }
 
     final balance = entries.fold<double>(0, (s, e) => s + (e.type == LedgerEntryType.lana ? e.amount : -e.amount));
-    final isZero = balance.abs() < 0.005;
-    final balanceLabel = isZero ? 'الحساب متصافٍ' : (balance > 0 ? 'لنا عنده' : 'له عندنا');
 
-    final buffer = StringBuffer()
-      ..writeln('كشف حساب — ${widget.person.name}')
-      ..writeln('——————————————');
-    for (final e in entries) {
-      final sign = e.type == LedgerEntryType.lana ? 'لنا' : 'لهم';
-      buffer.writeln('${_fmtDate(e.date)} | $sign | ${e.amount.toStringAsFixed(2)} د.ل | ${e.reason}');
-    }
-    buffer
-      ..writeln('——————————————')
-      ..writeln('$balanceLabel: ${balance.abs().toStringAsFixed(2)} د.ل');
-
-    await SharePlus.instance.share(ShareParams(text: buffer.toString(), subject: 'كشف حساب - ${widget.person.name}'));
+    if (!mounted) return;
+    final colors = context.read<ThemeController>().colors;
+    final choice = await showExportPicker(context, colors);
+    if (choice == 'csv') await exportLedgerCsv(widget.person, entries);
+    if (choice == 'pdf') await exportLedgerPdf(widget.person, entries, balance);
   }
 
   @override

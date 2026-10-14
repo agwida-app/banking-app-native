@@ -2,6 +2,61 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../theme/app_theme.dart';
 
+/// Shows a bottom sheet letting the user pick an export format. Returns
+/// 'csv', 'pdf', or null if dismissed without choosing.
+Future<String?> showExportPicker(BuildContext context, AppColors colors) {
+  return showModalBottomSheet<String>(
+    context: context,
+    backgroundColor: colors.bg,
+    shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(22))),
+    builder: (ctx) => SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(color: colors.borderSoft, borderRadius: BorderRadius.circular(2)),
+              ),
+            ),
+            Text('تصدير ومشاركة', style: TextStyle(color: colors.text, fontSize: 16, fontWeight: FontWeight.w900)),
+            const SizedBox(height: 14),
+            _ExportOption(colors: colors, icon: Icons.table_chart_outlined, label: 'CSV — جدول بيانات', value: 'csv'),
+            const SizedBox(height: 8),
+            _ExportOption(colors: colors, icon: Icons.picture_as_pdf_outlined, label: 'PDF — ملف منسّق', value: 'pdf'),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+class _ExportOption extends StatelessWidget {
+  final AppColors colors;
+  final IconData icon;
+  final String label;
+  final String value;
+  const _ExportOption({required this.colors, required this.icon, required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return OutlinedButton.icon(
+      style: OutlinedButton.styleFrom(
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        side: BorderSide(color: colors.borderSoft),
+      ),
+      onPressed: () => Navigator.pop(context, value),
+      icon: Icon(icon, color: colors.gold, size: 20),
+      label: Align(alignment: Alignment.centerRight, child: Text(label, style: TextStyle(color: colors.text, fontWeight: FontWeight.w600))),
+    );
+  }
+}
+
 class OfflineBanner extends StatelessWidget {
   final bool isOffline;
   const OfflineBanner({super.key, required this.isOffline});
