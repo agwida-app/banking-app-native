@@ -87,7 +87,13 @@ Future<void> exportClientsCsv(List<Client> clients) async {
 Future<void> exportClientsPdf(List<Client> clients) async {
   final font = await _loadArabicFont();
   final doc = pw.Document();
-  final headers = ['الاسم', 'المصرف', 'الهاتف', 'الرقم الوطني', 'الحالة', 'المبلغ'];
+  // The pdf package's Table lays columns out left-to-right regardless of
+  // text direction (it has no RTL column-reordering support at all), so to
+  // read correctly in Arabic (first column on the right) the array itself
+  // has to be reversed — written here in natural RTL reading order, then
+  // physically reversed right before handing it to the table.
+  final headersRtl = ['الاسم', 'المصرف', 'الهاتف', 'الرقم الوطني', 'الحالة', 'المبلغ', 'بيعت إلى'];
+  final headers = headersRtl.reversed.toList();
   final rows = clients
       .map((c) => [
             c.name,
@@ -96,7 +102,8 @@ Future<void> exportClientsPdf(List<Client> clients) async {
             c.nationalId,
             c.isSold ? 'مباع' : (c.cardBooked ? 'تم الحجز' : 'انتظار'),
             '${c.amountValue.toStringAsFixed(0)} ${c.currency}',
-          ])
+            c.isSold && c.soldTo.isNotEmpty ? c.soldTo : '—',
+          ].reversed.toList())
       .toList();
 
   doc.addPage(
@@ -106,12 +113,13 @@ Future<void> exportClientsPdf(List<Client> clients) async {
       theme: pw.ThemeData.withFont(base: font, bold: font),
       header: (ctx) => pw.Padding(
         padding: const pw.EdgeInsets.only(bottom: 12),
-        child: pw.Text('قائمة العملاء — إدارة بطاقاتك', style: const pw.TextStyle(fontSize: 18)),
+        child: pw.Text('قائمة العملاء — إدارة بطاقاتك', style: const pw.TextStyle(fontSize: 18), textAlign: pw.TextAlign.right),
       ),
       build: (ctx) => [
         pw.TableHelper.fromTextArray(
           headers: headers,
           data: rows,
+          tableDirection: pw.TextDirection.rtl,
           headerStyle: const pw.TextStyle(fontSize: 11),
           cellStyle: const pw.TextStyle(fontSize: 10),
           cellAlignment: pw.Alignment.centerRight,
@@ -155,13 +163,18 @@ Future<void> exportLedgerPdf(LedgerPerson person, List<LedgerEntry> entries, dou
       textDirection: pw.TextDirection.rtl,
       theme: pw.ThemeData.withFont(base: font, bold: font),
       build: (ctx) => [
-        pw.Text('كشف حساب', style: const pw.TextStyle(fontSize: 22)),
+        pw.Text('كشف حساب', style: const pw.TextStyle(fontSize: 22), textAlign: pw.TextAlign.right),
         pw.SizedBox(height: 4),
-        pw.Text(person.name, style: const pw.TextStyle(fontSize: 16)),
+        pw.Text(person.name, style: const pw.TextStyle(fontSize: 16), textAlign: pw.TextAlign.right),
         pw.SizedBox(height: 16),
         pw.TableHelper.fromTextArray(
-          headers: ['التاريخ', 'النوع', 'المبلغ (د.ل)', 'السبب'],
-          data: entries.map((e) => [_fmtDate(e.date), e.type == LedgerEntryType.lana ? 'لنا' : 'لهم', e.amount.toStringAsFixed(2), e.reason]).toList(),
+          // Reversed for the same reason as the clients table — see the
+          // comment in exportClientsPdf.
+          headers: ['التاريخ', 'النوع', 'المبلغ (د.ل)', 'السبب'].reversed.toList(),
+          data: entries
+              .map((e) => [_fmtDate(e.date), e.type == LedgerEntryType.lana ? 'لنا' : 'لهم', e.amount.toStringAsFixed(2), e.reason].reversed.toList())
+              .toList(),
+          tableDirection: pw.TextDirection.rtl,
           headerStyle: const pw.TextStyle(fontSize: 11),
           cellStyle: const pw.TextStyle(fontSize: 10),
           cellAlignment: pw.Alignment.centerRight,
