@@ -250,40 +250,40 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     final label = isZero ? 'متصافي' : (isPositive ? 'لنا' : 'لهم');
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
         color: colors.card,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(13),
         border: Border.all(color: colors.borderSoft),
-        boxShadow: const [BoxShadow(color: Color(0x0D000000), blurRadius: 10, offset: Offset(0, 4))],
+        boxShadow: const [BoxShadow(color: Color(0x0D000000), blurRadius: 8, offset: Offset(0, 3))],
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(13),
           onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => LedgerPersonScreen(person: p))),
           child: Padding(
-            padding: const EdgeInsets.all(14),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
             child: Row(
               children: [
                 Container(
-                  width: 42,
-                  height: 42,
+                  width: 34,
+                  height: 34,
                   alignment: Alignment.center,
-                  decoration: BoxDecoration(color: colors.goldSoft, borderRadius: BorderRadius.circular(13)),
-                  child: Text(p.name.isNotEmpty ? p.name[0] : '؟', style: TextStyle(color: colors.gold, fontWeight: FontWeight.w900, fontSize: 16)),
+                  decoration: BoxDecoration(color: colors.goldSoft, borderRadius: BorderRadius.circular(10)),
+                  child: Text(p.name.isNotEmpty ? p.name[0] : '؟', style: TextStyle(color: colors.gold, fontWeight: FontWeight.w900, fontSize: 13)),
                 ),
-                const SizedBox(width: 12),
-                Expanded(child: Text(p.name, style: TextStyle(color: colors.text, fontWeight: FontWeight.w700, fontSize: 14.5))),
+                const SizedBox(width: 10),
+                Expanded(child: Text(p.name, style: TextStyle(color: colors.text, fontWeight: FontWeight.w700, fontSize: 13.5))),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Text('${balance.abs().toStringAsFixed(0)} د.ل', style: TextStyle(color: color, fontWeight: FontWeight.w900, fontSize: 14)),
-                    Text(label, style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.w600)),
+                    Text('${balance.abs().toStringAsFixed(0)} د.ل', style: TextStyle(color: color, fontWeight: FontWeight.w900, fontSize: 12.5)),
+                    Text(label, style: TextStyle(color: color, fontSize: 9, fontWeight: FontWeight.w600)),
                   ],
                 ),
-                const SizedBox(width: 6),
-                Icon(Icons.chevron_left, size: 18, color: colors.textMuted),
+                const SizedBox(width: 4),
+                Icon(Icons.chevron_left, size: 16, color: colors.textMuted),
               ],
             ),
           ),

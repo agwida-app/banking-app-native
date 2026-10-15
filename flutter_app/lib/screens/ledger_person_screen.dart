@@ -210,13 +210,14 @@ class _LedgerPersonScreenState extends State<LedgerPersonScreen> {
 
   Future<void> _shareStatement() async {
     final user = FirebaseAuth.instance.currentUser!;
+    // Not ordered server-side — see the comment on the same pattern in
+    // build() below.
     final snap = await FirebaseFirestore.instance
         .collection('ledgerEntries')
         .where('uid', isEqualTo: user.uid)
         .where('personId', isEqualTo: widget.person.id)
-        .orderBy('date', descending: true)
         .get();
-    final entries = snap.docs.map((d) => LedgerEntry.fromDoc(d.id, d.data())).toList();
+    final entries = snap.docs.map((d) => LedgerEntry.fromDoc(d.id, d.data())).toList()..sort((a, b) => b.date.compareTo(a.date));
 
     if (entries.isEmpty) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('لا توجد معاملات للمشاركة')));
@@ -250,15 +251,21 @@ class _LedgerPersonScreenState extends State<LedgerPersonScreen> {
         ],
       ),
       body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+        // Not ordered server-side: two equality filters plus an orderBy on a
+        // third field needs an explicit Firestore composite index, and
+        // without it the query fails silently into an empty list here (no
+        // snapshot.hasError handling) — exactly the "transactions vanish"
+        // symptom. Sorted client-side instead, which works with just the
+        // automatic single-field indexes.
         stream: FirebaseFirestore.instance
             .collection('ledgerEntries')
             .where('uid', isEqualTo: user.uid)
             .where('personId', isEqualTo: widget.person.id)
-            .orderBy('date', descending: true)
             .snapshots(includeMetadataChanges: true),
         builder: (context, snapshot) {
           final loading = snapshot.connectionState == ConnectionState.waiting;
-          final entries = (snapshot.data?.docs ?? []).map((d) => LedgerEntry.fromDoc(d.id, d.data())).toList();
+          final entries = (snapshot.data?.docs ?? []).map((d) => LedgerEntry.fromDoc(d.id, d.data())).toList()
+            ..sort((a, b) => b.date.compareTo(a.date));
           final balance = entries.fold<double>(0, (s, e) => s + (e.type == LedgerEntryType.lana ? e.amount : -e.amount));
           final isZero = balance.abs() < 0.005;
           final isPositive = balance > 0;
