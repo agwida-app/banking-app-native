@@ -135,6 +135,96 @@ Future<void> exportClientsPdf(List<Client> clients) async {
   await SharePlus.instance.share(ShareParams(files: [XFile(file.path)], subject: 'قائمة العملاء'));
 }
 
+Future<void> exportAllLedgerCsv(List<LedgerPerson> people, List<LedgerEntry> entries) async {
+  final names = {for (final p in people) p.id: p.name};
+  final sorted = [...entries]..sort((a, b) {
+      final byName = (names[a.personId] ?? '').compareTo(names[b.personId] ?? '');
+      return byName != 0 ? byName : b.date.compareTo(a.date);
+    });
+  final header = ['الاسم', 'التاريخ', 'النوع', 'المبلغ', 'السبب'].map(_csvEscape).join(',');
+  final rows = sorted
+      .map((e) => [
+            _csvEscape(names[e.personId] ?? '—'),
+            _csvEscape(_fmtDate(e.date)),
+            _csvEscape(e.type == LedgerEntryType.lana ? 'لنا' : 'لهم'),
+            _csvEscape(e.amount.toStringAsFixed(2)),
+            _csvEscape(e.reason),
+          ].join(','))
+      .join('\r\n');
+  final csv = '﻿$header\r\n$rows';
+  final file = await _writeTextTemp('expenses_export.csv', csv);
+  await SharePlus.instance.share(ShareParams(files: [XFile(file.path)], subject: 'المصروفات — جميع المعاملات'));
+}
+
+Future<void> exportAllLedgerPdf(List<LedgerPerson> people, List<LedgerEntry> entries) async {
+  final font = await _loadArabicFont();
+  final names = {for (final p in people) p.id: p.name};
+  final sorted = [...entries]..sort((a, b) {
+      final byName = (names[a.personId] ?? '').compareTo(names[b.personId] ?? '');
+      return byName != 0 ? byName : b.date.compareTo(a.date);
+    });
+
+  final totalLana = entries.where((e) => e.type == LedgerEntryType.lana).fold<double>(0, (s, e) => s + e.amount);
+  final totalLahom = entries.where((e) => e.type == LedgerEntryType.lahom).fold<double>(0, (s, e) => s + e.amount);
+
+  final doc = pw.Document();
+  final headersRtl = ['الاسم', 'التاريخ', 'النوع', 'المبلغ (د.ل)', 'السبب'];
+  final headers = headersRtl.reversed.toList();
+  final rows = sorted
+      .map((e) => [
+            names[e.personId] ?? '—',
+            _fmtDate(e.date),
+            e.type == LedgerEntryType.lana ? 'لنا' : 'لهم',
+            e.amount.toStringAsFixed(2),
+            e.reason,
+          ].reversed.toList())
+      .toList();
+
+  doc.addPage(
+    pw.MultiPage(
+      pageFormat: PdfPageFormat.a4,
+      textDirection: pw.TextDirection.rtl,
+      theme: pw.ThemeData.withFont(base: font, bold: font),
+      header: (ctx) => pw.Padding(
+        padding: const pw.EdgeInsets.only(bottom: 12),
+        child: pw.Text('المصروفات — جميع المعاملات', style: const pw.TextStyle(fontSize: 18), textAlign: pw.TextAlign.right),
+      ),
+      build: (ctx) => [
+        pw.TableHelper.fromTextArray(
+          headers: headers,
+          data: rows,
+          tableDirection: pw.TextDirection.rtl,
+          headerStyle: const pw.TextStyle(fontSize: 11),
+          cellStyle: const pw.TextStyle(fontSize: 10),
+          cellAlignment: pw.Alignment.centerRight,
+          headerAlignment: pw.Alignment.center,
+          border: pw.TableBorder.all(color: PdfColors.grey400, width: 0.5),
+          headerDecoration: const pw.BoxDecoration(color: PdfColors.grey200),
+        ),
+        pw.SizedBox(height: 20),
+        pw.Container(
+          alignment: pw.Alignment.centerRight,
+          padding: const pw.EdgeInsets.all(12),
+          decoration: pw.BoxDecoration(border: pw.Border.all(color: PdfColors.grey400), borderRadius: const pw.BorderRadius.all(pw.Radius.circular(8))),
+          child: pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.end,
+            children: [
+              pw.Text('إجمالي لنا: ${totalLana.toStringAsFixed(2)} د.ل', style: const pw.TextStyle(fontSize: 12)),
+              pw.SizedBox(height: 4),
+              pw.Text('إجمالي لهم: ${totalLahom.toStringAsFixed(2)} د.ل', style: const pw.TextStyle(fontSize: 12)),
+              pw.SizedBox(height: 4),
+              pw.Text('الصافي: ${(totalLana - totalLahom).toStringAsFixed(2)} د.ل', style: const pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold)),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
+
+  final file = await _writeBytesTemp('expenses_export.pdf', await doc.save());
+  await SharePlus.instance.share(ShareParams(files: [XFile(file.path)], subject: 'المصروفات — جميع المعاملات'));
+}
+
 Future<void> exportLedgerCsv(LedgerPerson person, List<LedgerEntry> entries) async {
   final header = ['التاريخ', 'النوع', 'المبلغ', 'السبب'].map(_csvEscape).join(',');
   final rows = entries

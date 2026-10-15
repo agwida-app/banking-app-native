@@ -194,18 +194,31 @@ class _LedgerPersonScreenState extends State<LedgerPersonScreen> {
     );
     if (confirm != true) return;
     final db = FirebaseFirestore.instance;
-    // get() also needs connectivity for a fresh list, but falls back to the
-    // local cache when offline, so this still works without a network round trip.
-    final entries = await db.collection('ledgerEntries').where('personId', isEqualTo: widget.person.id).get();
-    final batch = db.batch();
-    for (final d in entries.docs) {
-      batch.delete(d.reference);
-    }
-    batch.delete(db.collection('ledgerPeople').doc(widget.person.id));
-    batch.commit().catchError((err) {
+    final user = FirebaseAuth.instance.currentUser!;
+    try {
+      // get() also needs connectivity for a fresh list, but falls back to the
+      // local cache when offline, so this still works without a network round
+      // trip. The uid filter is required here: the security rules check
+      // uid == resource.data.uid per document, and a list query that can't
+      // prove that from its own filters is rejected entirely rather than
+      // just having the extra docs filtered out.
+      final entries = await db
+          .collection('ledgerEntries')
+          .where('uid', isEqualTo: user.uid)
+          .where('personId', isEqualTo: widget.person.id)
+          .get();
+      final batch = db.batch();
+      for (final d in entries.docs) {
+        batch.delete(d.reference);
+      }
+      batch.delete(db.collection('ledgerPeople').doc(widget.person.id));
+      batch.commit().catchError((err) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تعذر الحذف: $err')));
+      });
+      if (mounted) Navigator.pop(context);
+    } catch (err) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تعذر الحذف: $err')));
-    });
-    if (mounted) Navigator.pop(context);
+    }
   }
 
   Future<void> _shareStatement() async {

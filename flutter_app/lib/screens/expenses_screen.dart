@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 
 import '../models/ledger.dart';
 import '../theme/app_theme.dart';
+import '../utils/export_utils.dart';
 import '../widgets/common.dart';
 import 'ledger_person_screen.dart';
 
@@ -111,6 +112,24 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     );
   }
 
+  Future<void> _export(List<LedgerPerson> people, List<LedgerEntry> entries) async {
+    final colors = context.read<ThemeController>().colors;
+    final choice = await showExportPicker(context, colors);
+    if (choice == 'csv') await exportAllLedgerCsv(people, entries);
+    if (choice == 'pdf') await exportAllLedgerPdf(people, entries);
+  }
+
+  Widget _exportButton(AppColors colors, List<LedgerPerson> people, List<LedgerEntry> entries) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+      child: OutlinedButton.icon(
+        onPressed: entries.isEmpty ? null : () => _export(people, entries),
+        icon: Icon(Icons.ios_share_outlined, size: 16, color: colors.gold),
+        label: Text('تصدير ومشاركة كل المعاملات', style: TextStyle(color: colors.gold, fontSize: 13)),
+      ),
+    );
+  }
+
   Widget _searchField(AppColors colors) {
     return TextField(
       textAlign: TextAlign.right,
@@ -192,6 +211,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
               children: [
                 OfflineBanner(isOffline: isOffline),
                 _header(colors),
+                if (people.isNotEmpty) _exportButton(colors, people, allEntries),
                 if (people.isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
