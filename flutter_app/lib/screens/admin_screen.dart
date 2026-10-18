@@ -36,7 +36,7 @@ class AdminScreen extends StatefulWidget {
 }
 
 class _AdminScreenState extends State<AdminScreen> {
-  String tab = 'subs';
+  String tab = 'stats';
 
   @override
   Widget build(BuildContext context) {
@@ -63,33 +63,231 @@ class _AdminScreenState extends State<AdminScreen> {
       body: Column(
         children: [
           Container(
-            margin: const EdgeInsets.all(12),
-            padding: const EdgeInsets.all(3),
-            decoration: BoxDecoration(color: colors.overlay, borderRadius: BorderRadius.circular(10)),
+            margin: const EdgeInsets.fromLTRB(14, 14, 14, 0),
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: colors.card,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: colors.borderSoft),
+              boxShadow: const [BoxShadow(color: Color(0x0D000000), blurRadius: 8, offset: Offset(0, 3))],
+            ),
             child: Row(
               children: [
-                _segButton('subs', 'الاشتراكات', colors),
-                _segButton('affiliates', 'المسوّقون', colors),
+                _segButton('stats', 'الإحصائيات', Icons.bar_chart_rounded, colors),
+                _segButton('subs', 'الاشتراكات', Icons.confirmation_number_outlined, colors),
+                _segButton('affiliates', 'المسوّقون', Icons.groups_outlined, colors),
               ],
             ),
           ),
-          Expanded(child: tab == 'subs' ? const _SubsTab() : const _AffiliatesTab()),
+          Expanded(
+            child: switch (tab) {
+              'stats' => const _StatsTab(),
+              'subs' => const _SubsTab(),
+              _ => const _AffiliatesTab(),
+            },
+          ),
         ],
       ),
     );
   }
 
-  Widget _segButton(String value, String label, AppColors colors) {
+  Widget _segButton(String value, String label, IconData icon, AppColors colors) {
     final isSel = tab == value;
     return Expanded(
       child: GestureDetector(
         onTap: () => setState(() => tab = value),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          decoration: BoxDecoration(color: isSel ? colors.gold : Colors.transparent, borderRadius: BorderRadius.circular(7)),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          decoration: BoxDecoration(color: isSel ? colors.gold : Colors.transparent, borderRadius: BorderRadius.circular(9)),
           alignment: Alignment.center,
-          child: Text(label, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: isSel ? colors.bg : colors.textMuted)),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 17, color: isSel ? colors.bg : colors.textMuted),
+              const SizedBox(height: 3),
+              Text(label, style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: isSel ? colors.bg : colors.textMuted)),
+            ],
+          ),
         ),
+      ),
+    );
+  }
+}
+
+class _StatsTab extends StatelessWidget {
+  const _StatsTab();
+
+  static const List<Color> _chartPalette = [
+    Color(0xFFC9A84C),
+    Color(0xFF2ECC71),
+    Color(0xFF8C6EE6),
+    Color(0xFF4AA8E0),
+    Color(0xFFF39C12),
+  ];
+
+  static const _arMonthsShort = ['ينا', 'فبر', 'مار', 'أبر', 'ماي', 'يون', 'يول', 'أغس', 'سبت', 'أكت', 'نوف', 'ديس'];
+
+  List<MapEntry<DateTime, int>> _monthlyGrowth(List<Subscription> subs) {
+    final counts = <String, int>{};
+    final months = <String, DateTime>{};
+    final now = DateTime.now();
+    for (int i = 5; i >= 0; i--) {
+      final m = DateTime(now.year, now.month - i, 1);
+      final key = '${m.year}-${m.month}';
+      counts[key] = 0;
+      months[key] = m;
+    }
+    for (final s in subs) {
+      final d = s.createdAt?.toDate();
+      if (d == null) continue;
+      final key = '${d.year}-${d.month}';
+      if (counts.containsKey(key)) counts[key] = counts[key]! + 1;
+    }
+    return counts.keys.map((k) => MapEntry(months[k]!, counts[k]!)).toList();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.watch<ThemeController>().colors;
+
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: FirebaseFirestore.instance.collection('subscriptions').snapshots(),
+      builder: (context, snapshot) {
+        final loading = snapshot.connectionState == ConnectionState.waiting;
+        final subs = (snapshot.data?.docs ?? []).map((d) => Subscription.fromDoc(d.id, d.data())).toList();
+        final activated = subs.where((s) => s.usedBy != null).toList();
+        final active = activated.where((s) => (s.daysLeft ?? 0) > 0).length;
+        final expired = activated.where((s) => (s.daysLeft ?? 1) <= 0).length;
+        final free = subs.where((s) => s.usedBy == null).length;
+
+        final priceByPlan = {for (final p in subPlans) p.id: p.price};
+        final totalRevenue = activated.fold<double>(0, (sum, s) => sum + (priceByPlan[s.plan] ?? 0));
+        final now = DateTime.now();
+        final thisMonthRevenue = activated.where((s) {
+          final d = s.usedAt?.toDate();
+          return d != null && d.year == now.year && d.month == now.month;
+        }).fold<double>(0, (sum, s) => sum + (priceByPlan[s.plan] ?? 0));
+
+        final planCounts = <String, int>{};
+        for (final s in activated) {
+          final label = s.planLabel.isEmpty ? s.plan : s.planLabel;
+          planCounts[label] = (planCounts[label] ?? 0) + 1;
+        }
+        final planEntries = planCounts.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
+
+        final growth = _monthlyGrowth(subs);
+        final maxGrowth = growth.fold<int>(1, (m, e) => e.value > m ? e.value : m);
+
+        if (loading) return Center(child: CircularProgressIndicator(color: colors.gold));
+
+        return ListView(
+          padding: const EdgeInsets.all(14),
+          children: [
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              alignment: WrapAlignment.center,
+              children: [
+                StatCard(icon: Icons.confirmation_number_outlined, value: '${subs.length}', label: 'إجمالي الأكواد', valueColor: colors.gold, colors: colors),
+                StatCard(icon: Icons.check_circle, value: '$active', label: 'مشتركون نشطون', valueColor: const Color(0xFF2ECC71), colors: colors),
+                StatCard(icon: Icons.cancel, value: '$expired', label: 'منتهية', valueColor: const Color(0xFFE74C3C), colors: colors),
+                StatCard(icon: Icons.lock_open, value: '$free', label: 'أكواد متاحة', valueColor: const Color(0xFFF39C12), colors: colors),
+                StatCard(icon: Icons.payments, value: '${totalRevenue.toStringAsFixed(0)} د.ل', label: 'إجمالي الإيرادات', valueColor: colors.gold, colors: colors),
+                StatCard(icon: Icons.calendar_month, value: '${thisMonthRevenue.toStringAsFixed(0)} د.ل', label: 'إيرادات هذا الشهر', valueColor: const Color(0xFF2ECC71), colors: colors),
+              ],
+            ),
+            if (planEntries.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              _card(
+                colors,
+                'توزيع الباقات بين المشتركين',
+                Column(
+                  children: [
+                    for (int i = 0; i < planEntries.length; i++)
+                      Padding(
+                        padding: EdgeInsets.only(top: i == 0 ? 0 : 10),
+                        child: Row(
+                          children: [
+                            SizedBox(width: 26, child: Text('${planEntries[i].value}', style: TextStyle(fontSize: 11, color: colors.textMuted))),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Stack(
+                                children: [
+                                  Container(height: 8, decoration: BoxDecoration(color: colors.inputBg, borderRadius: BorderRadius.circular(4))),
+                                  FractionallySizedBox(
+                                    widthFactor: planEntries[i].value / planEntries.first.value,
+                                    child: Container(
+                                      height: 8,
+                                      decoration:
+                                          BoxDecoration(color: _chartPalette[i % _chartPalette.length], borderRadius: BorderRadius.circular(4)),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            SizedBox(
+                              width: 70,
+                              child: Text(planEntries[i].key, textAlign: TextAlign.right, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 11, color: colors.textSoft)),
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+            const SizedBox(height: 16),
+            _card(
+              colors,
+              'نمو الاشتراكات — آخر 6 أشهر',
+              SizedBox(
+                height: 120,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    for (final e in growth)
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              Text('${e.value}', style: TextStyle(fontSize: 10, color: colors.textMuted)),
+                              const SizedBox(height: 4),
+                              Container(
+                                height: 70 * (e.value / maxGrowth).clamp(0.04, 1.0),
+                                decoration: BoxDecoration(color: colors.gold, borderRadius: BorderRadius.circular(4)),
+                              ),
+                              const SizedBox(height: 6),
+                              Text(_arMonthsShort[e.key.month - 1], style: TextStyle(fontSize: 10, color: colors.textSoft)),
+                            ],
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _card(AppColors colors, String title, Widget child) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(color: colors.card, borderRadius: BorderRadius.circular(14), border: Border.all(color: colors.borderSoft)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(title, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: colors.text)),
+          const SizedBox(height: 14),
+          child,
+        ],
       ),
     );
   }
@@ -422,21 +620,28 @@ class _SubsTabState extends State<_SubsTab> {
         return Column(
           children: [
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14),
+              padding: const EdgeInsets.fromLTRB(14, 14, 14, 0),
               child: Row(
                 children: [
                   Expanded(
-                    child: Text('الكل: ${subs.length} | مفعّلة: $activeCount | متاحة: $freeCount | منتهية: $expiredCount',
-                        style: TextStyle(fontSize: 11, color: colors.textMuted)),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+                      decoration: BoxDecoration(color: colors.card, borderRadius: BorderRadius.circular(10), border: Border.all(color: colors.borderSoft)),
+                      child: Text('الكل: ${subs.length}  ·  مفعّلة: $activeCount  ·  متاحة: $freeCount  ·  منتهية: $expiredCount',
+                          style: TextStyle(fontSize: 11.5, color: colors.textSoft, fontWeight: FontWeight.w600)),
+                    ),
                   ),
-                  FilledButton(
-                    style: FilledButton.styleFrom(backgroundColor: colors.gold, foregroundColor: colors.bg),
+                  const SizedBox(width: 8),
+                  FilledButton.icon(
+                    style: FilledButton.styleFrom(backgroundColor: colors.gold, foregroundColor: colors.bg, padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12)),
                     onPressed: _openCreateSheet,
-                    child: const Text('＋ كود جديد'),
+                    icon: const Icon(Icons.add, size: 18),
+                    label: const Text('كود جديد'),
                   ),
                 ],
               ),
             ),
+            const SizedBox(height: 10),
             Expanded(
               child: loading
                   ? Center(child: CircularProgressIndicator(color: colors.gold))
@@ -789,20 +994,28 @@ class _AffiliatesTabState extends State<_AffiliatesTab> {
         return Column(
           children: [
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14),
+              padding: const EdgeInsets.fromLTRB(14, 14, 14, 0),
               child: Row(
                 children: [
                   Expanded(
-                    child: Text('المسوّقون: ${affiliates.length} | إجمالي الإحالات: $totalReferrals', style: TextStyle(fontSize: 11, color: colors.textMuted)),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+                      decoration: BoxDecoration(color: colors.card, borderRadius: BorderRadius.circular(10), border: Border.all(color: colors.borderSoft)),
+                      child: Text('المسوّقون: ${affiliates.length}  ·  إجمالي الإحالات: $totalReferrals',
+                          style: TextStyle(fontSize: 11.5, color: colors.textSoft, fontWeight: FontWeight.w600)),
+                    ),
                   ),
-                  FilledButton(
-                    style: FilledButton.styleFrom(backgroundColor: colors.gold, foregroundColor: colors.bg),
+                  const SizedBox(width: 8),
+                  FilledButton.icon(
+                    style: FilledButton.styleFrom(backgroundColor: colors.gold, foregroundColor: colors.bg, padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12)),
                     onPressed: _openCreateSheet,
-                    child: const Text('＋ مسوّق جديد'),
+                    icon: const Icon(Icons.add, size: 18),
+                    label: const Text('مسوّق جديد'),
                   ),
                 ],
               ),
             ),
+            const SizedBox(height: 10),
             Expanded(
               child: affiliates.isEmpty
                   ? Center(child: Text('لا يوجد مسوّقون بعد', style: TextStyle(color: colors.textMuted)))
