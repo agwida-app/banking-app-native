@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "464547131895",
+    "project_id": "agwida-39e21",
+    "storage_bucket": "agwida-39e21.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:464547131895:android:511e01873c0e59c1003ef2",
+        "android_client_info": {
+          "package_name": "com.agwida.bankingapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCYwCdxIRV5qvSjiJab9xRLeNdRY8AT-Tw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
