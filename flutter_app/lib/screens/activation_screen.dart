@@ -4,12 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../models/subscription.dart';
 import '../theme/app_theme.dart';
 import '../widgets/common.dart';
 import 'auth_screen.dart' show whatsappUrl;
-
-const commissionPctDefault = 10;
 
 extension UserIdentity on User {
   /// A human-readable identity for a user — never null, unlike [User.email].
@@ -27,19 +24,11 @@ class ActivationScreen extends StatefulWidget {
 
 class _ActivationScreenState extends State<ActivationScreen> {
   final codeCtrl = TextEditingController();
-  final refCtrl = TextEditingController();
   bool loading = false;
-
-  @override
-  void initState() {
-    super.initState();
-    refCtrl.addListener(() => setState(() {}));
-  }
 
   @override
   void dispose() {
     codeCtrl.dispose();
-    refCtrl.dispose();
     super.dispose();
   }
 
@@ -86,69 +75,12 @@ class _ActivationScreenState extends State<ActivationScreen> {
         return;
       }
 
-      final refTrimmed = refCtrl.text.trim().toUpperCase();
-      var bonusMonths = 0;
-
-      if (refTrimmed.isNotEmpty) {
-        final affRef = db.collection('affiliates').doc(refTrimmed);
-        final affSnap = await affRef.get();
-        if (!affSnap.exists) {
-          _showMsg('خطأ', 'كود الإحالة غير صحيح');
-          setState(() => loading = false);
-          return;
-        }
-        final affData = affSnap.data()!;
-        final userRef = db.collection('users').doc(user.uid);
-        final userSnap = await userRef.get();
-        if (userSnap.exists && (userSnap.data()?['usedReferral'] == true)) {
-          _showMsg('خطأ', 'لقد استخدمت كود إحالة مسبقاً');
-          setState(() => loading = false);
-          return;
-        }
-        bonusMonths = 1;
-        final plan = subPlans.where((p) => p.id == data['plan']).firstOrNull;
-        final commPct = (affData['commissionPct'] as num?)?.toDouble() ?? commissionPctDefault;
-        final commAmount = plan != null ? ((plan.price * commPct / 100) * 100).round() / 100 : null;
-        await affRef.update({'totalReferrals': ((affData['totalReferrals'] as num?) ?? 0) + 1});
-        if (commAmount != null) {
-          await db.collection('affiliates').doc(affSnap.id).collection('payments').add({
-            'amount': commAmount,
-            'note': 'عمولة تلقائية — ${user.identity}',
-            'date': DateTime.now().toIso8601String().split('T').first,
-            'paidBy': 'تلقائي',
-            'isAuto': true,
-            'subscriptionCode': trimmed,
-            'createdAt': FieldValue.serverTimestamp(),
-          });
-          await affRef.update({'totalPaid': ((affData['totalPaid'] as num?) ?? 0) + commAmount});
-        }
-        await userRef.set({
-          'uid': user.uid,
-          'email': user.email,
-          'usedReferral': true,
-          'referralCode': refTrimmed,
-          'referralUsedAt': FieldValue.serverTimestamp(),
-        }, SetOptions(merge: true));
-      }
-
-      if (bonusMonths > 0) {
-        final newExp = DateTime(exp.year, exp.month + bonusMonths, exp.day, exp.hour, exp.minute, exp.second);
-        await ref.update({
-          'usedBy': user.uid,
-          'usedAt': FieldValue.serverTimestamp(),
-          'usedByEmail': user.identity,
-          'expiresAt': Timestamp.fromDate(newExp),
-          'planLabel': '${data['planLabel'] ?? ''} + شهر مجاني',
-        });
-        _showMsg('تم التفعيل', 'مرحباً بك!\nحصلت على شهر مجاني إضافي بفضل كود الإحالة');
-      } else {
-        await ref.update({
-          'usedBy': user.uid,
-          'usedAt': FieldValue.serverTimestamp(),
-          'usedByEmail': user.identity,
-        });
-        _showMsg('تم التفعيل', 'مرحباً بك في إدارة بطاقاتك!');
-      }
+      await ref.update({
+        'usedBy': user.uid,
+        'usedAt': FieldValue.serverTimestamp(),
+        'usedByEmail': user.identity,
+      });
+      _showMsg('تم التفعيل', 'مرحباً بك في إدارة بطاقاتك!');
     } catch (e) {
       _showMsg('خطأ', e.toString());
     }
@@ -195,15 +127,6 @@ class _ActivationScreenState extends State<ActivationScreen> {
                             hint: 'XXXXXXXX',
                             capitalization: TextCapitalization.characters,
                           ),
-                          ThemedField(
-                            label: 'كود الإحالة (اختياري — للحصول على شهر مجاني)',
-                            controller: refCtrl,
-                            colors: colors,
-                            hint: 'مثال: MOHAMAD47',
-                            capitalization: TextCapitalization.characters,
-                          ),
-                          if (refCtrl.text.isNotEmpty)
-                            const MessageBanner(text: 'ستحصل على شهر مجاني إضافي!', isError: false),
                           const SizedBox(height: 4),
                           PrimaryButton(label: 'تفعيل الاشتراك', onPressed: _activate, loading: loading, colors: colors),
                         ],
@@ -248,8 +171,4 @@ class _ActivationScreenState extends State<ActivationScreen> {
       ),
     );
   }
-}
-
-extension _FirstOrNull<T> on Iterable<T> {
-  T? get firstOrNull => isEmpty ? null : first;
 }
