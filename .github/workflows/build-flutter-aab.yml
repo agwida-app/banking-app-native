@@ -35,6 +35,8 @@ jobs:
         run: |
           test -n "$ANDROID_KEYSTORE_BASE64" || { echo "Missing ANDROID_KEYSTORE_BASE64 secret"; exit 1; }
           echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/upload-keystore.jks"
+          keytool -list -keystore "$RUNNER_TEMP/upload-keystore.jks" -storepass "${{ secrets.ANDROID_KEYSTORE_PASSWORD }}" -alias upload >/dev/null \
+            || { echo "Keystore failed to open: ANDROID_KEYSTORE_BASE64 was likely pasted incorrectly, or the password is wrong"; exit 1; }
 
       - name: Install dependencies
         run: flutter pub get
