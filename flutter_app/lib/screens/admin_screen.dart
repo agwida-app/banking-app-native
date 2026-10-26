@@ -1,0 +1,799 @@
+import 'dart:math';
+
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
+
+import '../models/subscription.dart';
+import '../theme/app_theme.dart';
+import '../widgets/common.dart';
+
+String _genCode() {
+  const c = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  final rnd = Random();
+  return List.generate(8, (_) => c[rnd.nextInt(c.length)]).join();
+}
+
+String _fmtDate(Timestamp? ts) {
+  if (ts == null) return '—';
+  final d = ts.toDate();
+  return '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+}
+
+class AdminScreen extends StatefulWidget {
+  const AdminScreen({super.key});
+
+  @override
+  State<AdminScreen> createState() => _AdminScreenState();
+}
+
+class _AdminScreenState extends State<AdminScreen> {
+  String tab = 'stats';
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.watch<ThemeController>().colors;
+
+    return Scaffold(
+      backgroundColor: colors.bg,
+      appBar: AppBar(
+        backgroundColor: colors.gold,
+        foregroundColor: Colors.white,
+        systemOverlayStyle: SystemUiOverlayStyle.light,
+        title: const Text('لوحة المدير'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.vpn_key),
+            onPressed: () => showDialog(context: context, builder: (_) => const _ChangePasswordDialog()),
+          ),
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: () => FirebaseAuth.instance.signOut(),
+          ),
+        ],
+      ),
+      body: Column(
+        children: [
+          Container(
+            margin: const EdgeInsets.fromLTRB(14, 14, 14, 0),
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: colors.card,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: colors.borderSoft),
+              boxShadow: const [BoxShadow(color: Color(0x0D000000), blurRadius: 8, offset: Offset(0, 3))],
+            ),
+            child: Row(
+              children: [
+                _segButton('stats', 'الإحصائيات', Icons.bar_chart_rounded, colors),
+                _segButton('subs', 'الاشتراكات', Icons.confirmation_number_outlined, colors),
+              ],
+            ),
+          ),
+          Expanded(
+            child: switch (tab) {
+              'stats' => const _StatsTab(),
+              _ => const _SubsTab(),
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _segButton(String value, String label, IconData icon, AppColors colors) {
+    final isSel = tab == value;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => setState(() => tab = value),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          decoration: BoxDecoration(color: isSel ? colors.gold : Colors.transparent, borderRadius: BorderRadius.circular(9)),
+          alignment: Alignment.center,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 17, color: isSel ? colors.bg : colors.textMuted),
+              const SizedBox(height: 3),
+              Text(label, style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: isSel ? colors.bg : colors.textMuted)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _StatsTab extends StatelessWidget {
+  const _StatsTab();
+
+  static const List<Color> _chartPalette = [
+    Color(0xFFC9A84C),
+    Color(0xFF2ECC71),
+    Color(0xFF8C6EE6),
+    Color(0xFF4AA8E0),
+    Color(0xFFF39C12),
+  ];
+
+  static const _arMonthsShort = ['ينا', 'فبر', 'مار', 'أبر', 'ماي', 'يون', 'يول', 'أغس', 'سبت', 'أكت', 'نوف', 'ديس'];
+
+  List<MapEntry<DateTime, int>> _monthlyGrowth(List<Subscription> subs) {
+    final counts = <String, int>{};
+    final months = <String, DateTime>{};
+    final now = DateTime.now();
+    for (int i = 5; i >= 0; i--) {
+      final m = DateTime(now.year, now.month - i, 1);
+      final key = '${m.year}-${m.month}';
+      counts[key] = 0;
+      months[key] = m;
+    }
+    for (final s in subs) {
+      final d = s.createdAt?.toDate();
+      if (d == null) continue;
+      final key = '${d.year}-${d.month}';
+      if (counts.containsKey(key)) counts[key] = counts[key]! + 1;
+    }
+    return counts.keys.map((k) => MapEntry(months[k]!, counts[k]!)).toList();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.watch<ThemeController>().colors;
+
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: FirebaseFirestore.instance.collection('subscriptions').snapshots(),
+      builder: (context, snapshot) {
+        final loading = snapshot.connectionState == ConnectionState.waiting;
+        final subs = (snapshot.data?.docs ?? []).map((d) => Subscription.fromDoc(d.id, d.data())).toList();
+        final activated = subs.where((s) => s.usedBy != null).toList();
+        final active = activated.where((s) => (s.daysLeft ?? 0) > 0).length;
+        final expired = activated.where((s) => (s.daysLeft ?? 1) <= 0).length;
+        final free = subs.where((s) => s.usedBy == null).length;
+
+        final priceByPlan = {for (final p in subPlans) p.id: p.price};
+        final totalRevenue = activated.fold<double>(0, (sum, s) => sum + (priceByPlan[s.plan] ?? 0));
+        final now = DateTime.now();
+        final thisMonthRevenue = activated.where((s) {
+          final d = s.usedAt?.toDate();
+          return d != null && d.year == now.year && d.month == now.month;
+        }).fold<double>(0, (sum, s) => sum + (priceByPlan[s.plan] ?? 0));
+
+        final planCounts = <String, int>{};
+        for (final s in activated) {
+          final label = s.planLabel.isEmpty ? s.plan : s.planLabel;
+          planCounts[label] = (planCounts[label] ?? 0) + 1;
+        }
+        final planEntries = planCounts.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
+
+        final growth = _monthlyGrowth(subs);
+        final maxGrowth = growth.fold<int>(1, (m, e) => e.value > m ? e.value : m);
+
+        if (loading) return Center(child: CircularProgressIndicator(color: colors.gold));
+
+        return ListView(
+          padding: const EdgeInsets.all(14),
+          children: [
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              alignment: WrapAlignment.center,
+              children: [
+                StatCard(icon: Icons.confirmation_number_outlined, value: '${subs.length}', label: 'إجمالي الأكواد', valueColor: colors.gold, colors: colors),
+                StatCard(icon: Icons.check_circle, value: '$active', label: 'مشتركون نشطون', valueColor: const Color(0xFF2ECC71), colors: colors),
+                StatCard(icon: Icons.cancel, value: '$expired', label: 'منتهية', valueColor: const Color(0xFFE74C3C), colors: colors),
+                StatCard(icon: Icons.lock_open, value: '$free', label: 'أكواد متاحة', valueColor: const Color(0xFFF39C12), colors: colors),
+                StatCard(icon: Icons.payments, value: '${totalRevenue.toStringAsFixed(0)} د.ل', label: 'إجمالي الإيرادات', valueColor: colors.gold, colors: colors),
+                StatCard(icon: Icons.calendar_month, value: '${thisMonthRevenue.toStringAsFixed(0)} د.ل', label: 'إيرادات هذا الشهر', valueColor: const Color(0xFF2ECC71), colors: colors),
+              ],
+            ),
+            if (planEntries.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              _card(
+                colors,
+                'توزيع الباقات بين المشتركين',
+                Column(
+                  children: [
+                    for (int i = 0; i < planEntries.length; i++)
+                      Padding(
+                        padding: EdgeInsets.only(top: i == 0 ? 0 : 10),
+                        child: Row(
+                          children: [
+                            SizedBox(width: 26, child: Text('${planEntries[i].value}', style: TextStyle(fontSize: 11, color: colors.textMuted))),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Stack(
+                                children: [
+                                  Container(height: 8, decoration: BoxDecoration(color: colors.inputBg, borderRadius: BorderRadius.circular(4))),
+                                  FractionallySizedBox(
+                                    widthFactor: planEntries[i].value / planEntries.first.value,
+                                    child: Container(
+                                      height: 8,
+                                      decoration:
+                                          BoxDecoration(color: _chartPalette[i % _chartPalette.length], borderRadius: BorderRadius.circular(4)),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            SizedBox(
+                              width: 70,
+                              child: Text(planEntries[i].key, textAlign: TextAlign.right, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 11, color: colors.textSoft)),
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+            const SizedBox(height: 16),
+            _card(
+              colors,
+              'نمو الاشتراكات — آخر 6 أشهر',
+              SizedBox(
+                height: 120,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    for (final e in growth)
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              Text('${e.value}', style: TextStyle(fontSize: 10, color: colors.textMuted)),
+                              const SizedBox(height: 4),
+                              Container(
+                                height: 70 * (e.value / maxGrowth).clamp(0.04, 1.0),
+                                decoration: BoxDecoration(color: colors.gold, borderRadius: BorderRadius.circular(4)),
+                              ),
+                              const SizedBox(height: 6),
+                              Text(_arMonthsShort[e.key.month - 1], style: TextStyle(fontSize: 10, color: colors.textSoft)),
+                            ],
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _card(AppColors colors, String title, Widget child) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(color: colors.card, borderRadius: BorderRadius.circular(14), border: Border.all(color: colors.borderSoft)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(title, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: colors.text)),
+          const SizedBox(height: 14),
+          child,
+        ],
+      ),
+    );
+  }
+}
+
+class _ChangePasswordDialog extends StatefulWidget {
+  const _ChangePasswordDialog();
+  @override
+  State<_ChangePasswordDialog> createState() => _ChangePasswordDialogState();
+}
+
+class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
+  final current = TextEditingController();
+  final newPw = TextEditingController();
+  final confirm = TextEditingController();
+  bool saving = false;
+  String? err;
+
+  Future<void> _submit() async {
+    if (current.text.isEmpty) return setState(() => err = 'أدخل كلمة المرور الحالية');
+    if (newPw.text.length < 6) return setState(() => err = 'كلمة المرور الجديدة 6 أحرف على الأقل');
+    if (newPw.text != confirm.text) return setState(() => err = 'كلمتا المرور غير متطابقتان');
+    setState(() {
+      saving = true;
+      err = null;
+    });
+    try {
+      final user = FirebaseAuth.instance.currentUser!;
+      final cred = EmailAuthProvider.credential(email: user.email!, password: current.text);
+      await user.reauthenticateWithCredential(cred);
+      await user.updatePassword(newPw.text);
+      if (mounted) Navigator.pop(context);
+    } on FirebaseAuthException catch (e) {
+      const m = {
+        'wrong-password': 'كلمة المرور الحالية غير صحيحة',
+        'invalid-credential': 'كلمة المرور الحالية غير صحيحة',
+        'too-many-requests': 'محاولات كثيرة، حاول لاحقاً',
+      };
+      setState(() => err = m[e.code] ?? e.message);
+    }
+    if (mounted) setState(() => saving = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.watch<ThemeController>().colors;
+    return AlertDialog(
+      backgroundColor: colors.card,
+      title: Text('تغيير كلمة المرور', style: TextStyle(color: colors.gold)),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (err != null) MessageBanner(text: err!),
+            ThemedField(label: 'كلمة المرور الحالية *', controller: current, colors: colors, obscure: true),
+            ThemedField(label: 'كلمة المرور الجديدة *', controller: newPw, colors: colors, obscure: true),
+            ThemedField(label: 'تأكيد كلمة المرور *', controller: confirm, colors: colors, obscure: true),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('إلغاء')),
+        FilledButton(
+          style: FilledButton.styleFrom(backgroundColor: colors.gold, foregroundColor: colors.bg),
+          onPressed: saving ? null : _submit,
+          child: saving ? const SizedBox(height: 16, width: 16, child: CircularProgressIndicator(strokeWidth: 2)) : const Text('حفظ'),
+        ),
+      ],
+    );
+  }
+}
+
+class _SubsTab extends StatefulWidget {
+  const _SubsTab();
+  @override
+  State<_SubsTab> createState() => _SubsTabState();
+}
+
+class _SubsTabState extends State<_SubsTab> {
+  String? expandedDevices;
+
+  void _copy(String value, String label) {
+    Clipboard.setData(ClipboardData(text: value));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تم نسخ $label')));
+  }
+
+  Future<void> _deleteSub(String id) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('حذف'),
+        content: const Text('هل أنت متأكد؟'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('إلغاء')),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('حذف', style: TextStyle(color: Colors.red))),
+        ],
+      ),
+    );
+    if (confirm == true) {
+      await FirebaseFirestore.instance.collection('subscriptions').doc(id).delete();
+    }
+  }
+
+  Future<void> _resetDevices(String id) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('إعادة ضبط الأجهزة'),
+        content: const Text('مسح جميع الأجهزة المسجلة؟'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('إلغاء')),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('إعادة ضبط')),
+        ],
+      ),
+    );
+    if (confirm == true) {
+      await FirebaseFirestore.instance.collection('subscriptions').doc(id).update({'devices': {}});
+    }
+  }
+
+  Future<void> _resetPassword(String? email) async {
+    if (email == null || email.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('هذا المشترك لم يسجل بريده بعد')));
+      return;
+    }
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('إعادة تعيين كلمة المرور'),
+        content: Text('إرسال رابط إلى:\n$email؟'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('إلغاء')),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('إرسال')),
+        ],
+      ),
+    );
+    if (confirm == true) {
+      await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تم الإرسال إلى $email')));
+    }
+  }
+
+  void _copyWelcome(Subscription sub) {
+    final msg = 'مرحباً\n\nتم تفعيل اشتراكك في تطبيق إدارة بطاقاتك\n\n'
+        'رابط التطبيق:\nhttps://banking-app-pink-six.vercel.app\n\n'
+        'كود التفعيل:\n${sub.code}\n\n'
+        'لتثبيت التطبيق:\nافتح الرابط ← زر المشاركة ← "إضافة إلى الشاشة الرئيسية"';
+    _copy(msg, 'رسالة الترحيب');
+  }
+
+  Future<void> _confirmRenew(Subscription sub, SubPlan plan) async {
+    final newExp = addPlanDuration(plan.months, plan.days);
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('تأكيد التجديد'),
+        content: Text(
+            'العميل: ${sub.usedByEmail ?? 'غير مفعّل'}\n\nالباقة: ${plan.label}\nالسعر: ${plan.price} د.ل\nينتهي: ${_fmtDate(Timestamp.fromDate(newExp))}'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('إلغاء')),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('تأكيد')),
+        ],
+      ),
+    );
+    if (confirm == true) {
+      await FirebaseFirestore.instance.collection('subscriptions').doc(sub.id).update({
+        'expiresAt': Timestamp.fromDate(newExp),
+        'plan': plan.id,
+        'planLabel': plan.label,
+      });
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تم تجديد الاشتراك بـ ${plan.label}')));
+      }
+    }
+  }
+
+  void _openRenewSheet(Subscription sub) {
+    final colors = context.read<ThemeController>().colors;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: colors.bg,
+      isScrollControlled: true,
+      builder: (_) => DraggableScrollableSheet(
+        initialChildSize: 0.7,
+        expand: false,
+        builder: (context, scrollController) => Padding(
+          padding: const EdgeInsets.all(16),
+          child: ListView(
+            controller: scrollController,
+            children: [
+              Text('تجديد الاشتراك', style: TextStyle(color: colors.gold, fontSize: 16, fontWeight: FontWeight.w900)),
+              const SizedBox(height: 12),
+              for (final plan in subPlans)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: OutlinedButton(
+                    style: OutlinedButton.styleFrom(padding: const EdgeInsets.all(14), side: BorderSide(color: colors.inputBorder)),
+                    onPressed: () => _confirmRenew(sub, plan),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(plan.label, style: TextStyle(color: colors.text, fontWeight: FontWeight.w700)),
+                              Text('ينتهي: ${_fmtDate(Timestamp.fromDate(addPlanDuration(plan.months, plan.days)))}',
+                                  style: TextStyle(color: colors.textMuted, fontSize: 11)),
+                            ],
+                          ),
+                        ),
+                        Text('${plan.price} د.ل', style: const TextStyle(color: Color(0xFF2ECC71), fontWeight: FontWeight.w900, fontSize: 16)),
+                      ],
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _openCreateSheet() {
+    final colors = context.read<ThemeController>().colors;
+    final codeCtrl = TextEditingController(text: _genCode());
+    final maxClientsCtrl = TextEditingController(text: '500');
+    final notesCtrl = TextEditingController();
+    var plan = '1m';
+    var saving = false;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: colors.bg,
+      isScrollControlled: true,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheetState) => DraggableScrollableSheet(
+          initialChildSize: 0.85,
+          expand: false,
+          builder: (context, scrollController) => Padding(
+            padding: EdgeInsets.only(left: 16, right: 16, top: 16, bottom: MediaQuery.of(ctx).viewInsets.bottom + 16),
+            child: ListView(
+              controller: scrollController,
+              children: [
+                Text('كود اشتراك جديد', style: TextStyle(color: colors.gold, fontSize: 16, fontWeight: FontWeight.w900)),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: ThemedField(label: 'كود التفعيل', controller: codeCtrl, colors: colors, capitalization: TextCapitalization.characters),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton(
+                      onPressed: () => setSheetState(() => codeCtrl.text = _genCode()),
+                      icon: const Icon(Icons.casino),
+                    ),
+                  ],
+                ),
+                Text('الباقة', style: TextStyle(fontSize: 12, color: colors.textSoft)),
+                const SizedBox(height: 6),
+                for (final p in subPlans)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.all(12),
+                        side: BorderSide(color: plan == p.id ? colors.gold : colors.inputBorder),
+                        backgroundColor: plan == p.id ? colors.goldSoft : null,
+                      ),
+                      onPressed: () => setSheetState(() => plan = p.id),
+                      child: Row(
+                        children: [
+                          Expanded(child: Text(p.label, style: TextStyle(color: plan == p.id ? colors.gold : colors.text))),
+                          Text('${p.price} د.ل', style: const TextStyle(color: Color(0xFF2ECC71), fontWeight: FontWeight.w700)),
+                        ],
+                      ),
+                    ),
+                  ),
+                ThemedField(label: 'الحد الأقصى للعملاء', controller: maxClientsCtrl, colors: colors, keyboardType: TextInputType.number),
+                ThemedField(label: 'ملاحظة', controller: notesCtrl, colors: colors, hint: 'اسم العميل مثلاً'),
+                const SizedBox(height: 8),
+                PrimaryButton(
+                  label: 'حفظ',
+                  colors: colors,
+                  loading: saving,
+                  onPressed: () async {
+                    if (codeCtrl.text.trim().isEmpty) return;
+                    setSheetState(() => saving = true);
+                    final selectedPlan = subPlans.firstWhere((p) => p.id == plan);
+                    final codeKey = codeCtrl.text.trim().toUpperCase();
+                    final exp = addPlanDuration(selectedPlan.months, selectedPlan.days);
+                    await FirebaseFirestore.instance.collection('subscriptions').doc(codeKey).set({
+                      'code': codeKey,
+                      'plan': plan,
+                      'planLabel': selectedPlan.label,
+                      'maxClients': max(500, int.tryParse(maxClientsCtrl.text) ?? 500),
+                      'expiresAt': Timestamp.fromDate(exp),
+                      'usedBy': null,
+                      'usedAt': null,
+                      'usedByEmail': null,
+                      'createdBy': FirebaseAuth.instance.currentUser!.uid,
+                      'createdAt': FieldValue.serverTimestamp(),
+                      'notes': notesCtrl.text,
+                      'devices': {},
+                    });
+                    if (ctx.mounted) Navigator.pop(ctx);
+                  },
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.watch<ThemeController>().colors;
+
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: FirebaseFirestore.instance.collection('subscriptions').orderBy('createdAt', descending: true).snapshots(),
+      builder: (context, snapshot) {
+        final loading = snapshot.connectionState == ConnectionState.waiting;
+        final subs = (snapshot.data?.docs ?? []).map((d) => Subscription.fromDoc(d.id, d.data())).toList();
+        final activeCount = subs.where((s) => s.usedBy != null && (s.daysLeft ?? 0) > 0).length;
+        final freeCount = subs.where((s) => s.usedBy == null).length;
+        final expiredCount = subs.where((s) => (s.daysLeft ?? 1) <= 0).length;
+
+        return Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 14, 14, 0),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+                      decoration: BoxDecoration(color: colors.card, borderRadius: BorderRadius.circular(10), border: Border.all(color: colors.borderSoft)),
+                      child: Text('الكل: ${subs.length}  ·  مفعّلة: $activeCount  ·  متاحة: $freeCount  ·  منتهية: $expiredCount',
+                          style: TextStyle(fontSize: 11.5, color: colors.textSoft, fontWeight: FontWeight.w600)),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  FilledButton.icon(
+                    style: FilledButton.styleFrom(backgroundColor: colors.gold, foregroundColor: colors.bg, padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12)),
+                    onPressed: _openCreateSheet,
+                    icon: const Icon(Icons.add, size: 18),
+                    label: const Text('كود جديد'),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 10),
+            Expanded(
+              child: loading
+                  ? Center(child: CircularProgressIndicator(color: colors.gold))
+                  : subs.isEmpty
+                      ? Center(child: Text('لا يوجد اشتراكات بعد', style: TextStyle(color: colors.textMuted)))
+                      : ListView.builder(
+                          padding: const EdgeInsets.all(14),
+                          itemCount: subs.length,
+                          itemBuilder: (context, i) => _subCard(colors, subs[i]),
+                        ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _subCard(AppColors colors, Subscription sub) {
+    final days = sub.daysLeft;
+    final isActive = sub.usedBy != null && (days ?? 0) > 0;
+    final isExpired = (days ?? 1) <= 0;
+    final isFree = sub.usedBy == null && !isExpired;
+    final deviceCount = sub.devices.length;
+
+    final (chipBg, chipBorder, chipText, chipIcon, chipLabel) = isActive
+        ? (const Color(0x1A2ECC71), const Color(0x4D2ECC71), const Color(0xFF2ECC71), Icons.check_circle, 'مفعّل')
+        : isFree
+            ? (const Color(0x1AC9A84C), const Color(0x4DC9A84C), const Color(0xFFC9A84C), Icons.lock_open, 'متاح')
+            : (const Color(0x1AE74C3C), const Color(0x4DE74C3C), const Color(0xFFE74C3C), Icons.cancel, 'منتهي');
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(color: colors.card, borderRadius: BorderRadius.circular(12), border: Border.all(color: colors.borderSoft)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Row(
+                  children: [
+                    Flexible(child: Text(sub.code, style: TextStyle(color: colors.gold, fontWeight: FontWeight.w700, fontSize: 15))),
+                    IconButton(
+                      iconSize: 16,
+                      visualDensity: VisualDensity.compact,
+                      icon: const Icon(Icons.content_copy),
+                      onPressed: () => _copy(sub.code, 'الكود'),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(color: chipBg, border: Border.all(color: chipBorder), borderRadius: BorderRadius.circular(20)),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(chipIcon, size: 11, color: chipText),
+                    const SizedBox(width: 3),
+                    Text(chipLabel, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: chipText)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text('ينتهي: ${_fmtDate(sub.expiresAt)} (${(days ?? 0) > 0 ? '$days يوم' : 'منتهي'})', style: TextStyle(fontSize: 12, color: colors.textMuted)),
+          if (sub.usedByEmail != null) Text(sub.usedByEmail!, style: TextStyle(fontSize: 12, color: colors.textMuted)),
+          if (sub.planLabel.isNotEmpty) Text(sub.planLabel, style: TextStyle(fontSize: 12, color: colors.textMuted)),
+          Text('الحد: ${sub.maxClients} عميل', style: TextStyle(fontSize: 12, color: colors.textMuted)),
+          if (sub.notes.isNotEmpty) Text(sub.notes, style: TextStyle(fontSize: 12, color: colors.textMuted)),
+          const SizedBox(height: 8),
+          InkWell(
+            onTap: () => setState(() => expandedDevices = expandedDevices == sub.id ? null : sub.id),
+            child: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(color: colors.inputBg, borderRadius: BorderRadius.circular(8), border: Border.all(color: colors.borderSoft)),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('الأجهزة: $deviceCount/7', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: colors.gold)),
+                  Text(expandedDevices == sub.id ? '▲' : '▼', style: TextStyle(color: colors.gold, fontSize: 12)),
+                ],
+              ),
+            ),
+          ),
+          if (expandedDevices == sub.id)
+            Container(
+              margin: const EdgeInsets.only(top: 6),
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(color: colors.overlay, borderRadius: BorderRadius.circular(8)),
+              child: sub.devices.isEmpty
+                  ? Text('لا يوجد أجهزة مسجلة', style: TextStyle(fontSize: 12, color: colors.textMuted))
+                  : Column(
+                      children: sub.devices.entries
+                          .toList()
+                          .asMap()
+                          .entries
+                          .map((entry) {
+                            final i = entry.key;
+                            final d = entry.value.value;
+                            return Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 6),
+                              child: Row(
+                                children: [
+                                  SizedBox(width: 18, child: Text('${i + 1}', style: TextStyle(fontSize: 12, color: colors.textMuted))),
+                                  Icon(Icons.smartphone, size: 16, color: colors.textMuted),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(d.type.isEmpty ? 'جهاز غير معروف' : d.type, style: TextStyle(fontSize: 13, color: colors.text)),
+                                        Text('آخر ظهور: ${d.lastSeen}', style: TextStyle(fontSize: 11, color: colors.textMuted)),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          })
+                          .toList(),
+                    ),
+            ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              OutlinedButton.icon(
+                onPressed: () => _copyWelcome(sub),
+                icon: const Icon(Icons.mail_outline, size: 14),
+                label: const Text('رسالة', style: TextStyle(fontSize: 12)),
+              ),
+              OutlinedButton.icon(
+                onPressed: () => _openRenewSheet(sub),
+                icon: Icon(Icons.autorenew, size: 14, color: colors.gold),
+                label: Text('تجديد', style: TextStyle(fontSize: 12, color: colors.gold)),
+              ),
+              OutlinedButton.icon(
+                onPressed: () => _resetPassword(sub.usedByEmail),
+                icon: const Icon(Icons.vpn_key, size: 14),
+                label: const Text('كلمة مرور', style: TextStyle(fontSize: 12)),
+              ),
+              OutlinedButton.icon(
+                onPressed: () => _resetDevices(sub.id),
+                icon: const Icon(Icons.phonelink_erase, size: 14),
+                label: const Text('إعادة ضبط الأجهزة', style: TextStyle(fontSize: 12)),
+              ),
+              OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(side: const BorderSide(color: Color(0x4DE74C3C))),
+                onPressed: () => _deleteSub(sub.id),
+                icon: const Icon(Icons.delete_outline, size: 14, color: Color(0xFFE74C3C)),
+                label: const Text('حذف', style: TextStyle(fontSize: 12, color: Color(0xFFE74C3C))),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
