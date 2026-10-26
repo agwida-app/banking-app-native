@@ -32,6 +32,17 @@ android {
     }
 
     signingConfigs {
+        release {
+            // Provided by the release CI workflow via environment variables
+            // (see .github/workflows/build-flutter-aab.yml). Absent for debug builds.
+            def keystorePath = System.getenv("ANDROID_KEYSTORE_PATH")
+            if (keystorePath != null) {
+                storeFile = file(keystorePath)
+                storePassword = System.getenv("ANDROID_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("ANDROID_KEY_ALIAS")
+                keyPassword = System.getenv("ANDROID_KEY_PASSWORD")
+            }
+        }
         debug {
             // Committed to the repo so every build (local or CI) signs with the
             // same key. Otherwise each machine/CI run auto-generates its own
@@ -46,9 +57,9 @@ android {
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.debug
+            // Falls back to the debug key when no release keystore is supplied,
+            // so a plain `flutter run --release` still works locally.
+            signingConfig = System.getenv("ANDROID_KEYSTORE_PATH") != null ? signingConfigs.release : signingConfigs.debug
         }
     }
 }
